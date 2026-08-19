@@ -1347,49 +1347,73 @@ function copiarLinkPagamento(atletaId){
   else{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Link copiado!','ok');}
 }
 
+function _getSessoesConfirmadas(atletaId,nome,mes,ano){
+  const mesStr=String(mes).padStart(2,'0');
+  const datas=[];
+  Object.entries(S.sessoes).forEach(([sessId,s])=>{
+    if(!s.data||!s.data.startsWith(ano+'-'+mesStr))return;
+    const press=S.presencas[sessId]||{};
+    const confirmou=Object.values(press).some(c=>{
+      if(atletaId&&c.atletaId===atletaId)return true;
+      if((c.nome||'').toLowerCase()===(nome||'').toLowerCase())return true;
+      return false;
+    });
+    if(confirmou){
+      const d=new Date(s.data+'T12:00:00');
+      datas.push(DIAS[d.getDay()]+', '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+(s.hora?' — '+s.hora:''));
+    }
+  });
+  return datas;
+}
+
 function abrirWhatsAppPagamento(atletaId,nome,telRaw,pagId){
   const now=new Date();
-  const mesNome=MESES[now.getMonth()+1];
-  const ano=now.getFullYear();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
   const link=atletaId?'https://adeiltongomes.github.io/ajf-goleiros/#pagar/'+atletaId:null;
+
+  // Buscar datas dos treinos confirmados
+  const sessoes=_getSessoesConfirmadas(atletaId,nome,mes,ano);
+  const total=sessoes.length>0?sessoes.length*40:40;
+  const refBlock=sessoes.length>0
+    ?sessoes.map(d=>'     📅 '+d).join('\n')
+    :'     📅 '+MESES[mes]+' '+ano;
+
   const msg=link
 ?'🥅 *AJF ACADEMIA DE GOLEIROS* 🥅\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n\n'
 +'Olá, *'+nome+'*! 👋\n\n'
-+'Sua presença no treino foi confirmada! ✅\n\n'
-+'Para confirmar seu pagamento de *R$ 40,00*, acesse o link abaixo:\n\n'
++'Você tem pagamento pendente referente ao'+(sessoes.length>1?'s':'')+'  treino'+(sessoes.length>1?'s':'')+':\n'
++refBlock+'\n\n'
++'💰 *Total: R$ '+total+',00*\n\n'
++'Acesse o link para ver a chave Pix e enviar o comprovante:\n\n'
 +'🔗 *'+link+'*\n\n'
-+'No link você encontra:\n'
-+'💳 A chave Pix para realizar o pagamento\n'
-+'📎 Campo para enviar o comprovante\n\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n'
 +'_Qualquer dúvida, fale conosco._ 🤝\n'
 +'⚽ *AJF Academia de Goleiros*'
 :'🥅 *AJF ACADEMIA DE GOLEIROS* 🥅\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n\n'
 +'Olá, *'+nome+'*! 👋\n\n'
-+'Sua presença no treino foi confirmada! ✅\n\n'
-+'Realize o pagamento de *R$ 40,00* via Pix:\n\n'
-+'🔑 *Chave Pix:* ajfgoleiros\n'
-+'💰 *Valor:* R$ 40,00\n'
-+'📅 *Referência:* '+mesNome+' '+ano+'\n\n'
-+'📸 Após o pagamento, envie o comprovante para o administrador.\n\n'
++'Você tem pagamento pendente referente ao'+(sessoes.length>1?'s':'')+'  treino'+(sessoes.length>1?'s':'')+':\n'
++refBlock+'\n\n'
++'💰 *Total: R$ '+total+',00*\n\n'
++'🔑 *Chave Pix:* ajfgoleiros\n\n'
++'📸 Envie o comprovante ao administrador após o pagamento.\n\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n'
 +'_Qualquer dúvida, fale conosco._ 🤝\n'
 +'⚽ *AJF Academia de Goleiros*';
+
   const digits=(telRaw||'').replace(/\D/g,'');
   const phone=digits?(digits.startsWith('55')?digits:'55'+digits):'';
   const url=phone?'https://wa.me/'+phone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
   if(!phone)showToast('Telefone não encontrado — WhatsApp aberto sem número.','');
   window.open(url,'_blank');
-  // Mark as notified in Firebase
+  // Mark as notified
   const ts=Date.now();
   if(pagId){
     db.ref('ajf/pagamentos/'+pagId).update({notificado:true,notificadoEm:ts});
   } else {
-    // fromPresenca — create payment record
     const key=uid();
-    const payload={atletaNome:nome,mes:now.getMonth()+1,ano,valor:40,pago:false,pendente:true,tipo:'treino',notificado:true,notificadoEm:ts,ts};
+    const payload={atletaNome:nome,mes,ano,valor:total,pago:false,pendente:true,tipo:'treino',notificado:true,notificadoEm:ts,ts};
     if(atletaId)payload.atletaId=atletaId;
     db.ref('ajf/pagamentos/'+key).set(payload);
   }
