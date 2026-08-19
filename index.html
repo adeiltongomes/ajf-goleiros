@@ -824,38 +824,52 @@ function renderFinanceiro(){
   el.innerHTML='<div class="fade-up">'+logoBar('Financeiro')+tabHtml+body+'</div>';
 }
 
+function _resolveAtletaId(atletaId,nome){
+  if(atletaId&&atletaId!=='undefined')return atletaId;
+  if(!nome)return null;
+  const q=(nome||'').toLowerCase().trim();
+  const m=Object.entries(S.atletas).find(([,a])=>a.ativo!==false&&(a.nome||'').toLowerCase().trim()===q);
+  return m?m[0]:null;
+}
+
 function _buildTreinoPorAtl(mes,ano){
   const porKey={};
 
-  // 1. Payment records already saved
+  const upsert=(atletaId,nome,local,tel)=>{
+    const at=atletaId?S.atletas[atletaId]:null;
+    const key=atletaId||('n:'+(nome||'').toLowerCase().trim());
+    if(!porKey[key])porKey[key]={atletaId:atletaId||null,nome:at?.nome||nome||'—',local:at?.local||local||'',tel:at?.telefone||tel||'',pags:[],pendente:0,pago:0,notificado:false,notificadoEm:0};
+    // backfill fields if now resolved
+    if(atletaId&&!porKey[key].atletaId){porKey[key].atletaId=atletaId;porKey[key].nome=at?.nome||porKey[key].nome;porKey[key].local=at?.local||porKey[key].local;porKey[key].tel=at?.telefone||porKey[key].tel;}
+    return key;
+  };
+
+  // 1. Payment records
   Object.entries(S.pagamentos).forEach(([pid,p])=>{
     if(p.tipo!=='treino'||p.mes!=mes||p.ano!=ano)return;
-    const at=p.atletaId?S.atletas[p.atletaId]:null;
-    const key=p.atletaId||(p.atletaNome?'n:'+p.atletaNome.toLowerCase():null);
-    if(!key)return;
-    if(!porKey[key])porKey[key]={atletaId:p.atletaId||null,nome:p.atletaNome||at?.nome||'—',local:at?.local||'',tel:at?.telefone||'',pags:[],pendente:0,pago:0,notificado:false,notificadoEm:0};
+    const atletaId=_resolveAtletaId(p.atletaId,p.atletaNome);
+    const key=upsert(atletaId,p.atletaNome,'',p.local||'');
     porKey[key].pags.push({...p,id:pid});
     if(p.pago)porKey[key].pago+=Number(p.valor||0);
     else porKey[key].pendente+=Number(p.valor||0);
-    if(p.notificado&&p.notificadoEm>( porKey[key].notificadoEm||0)){porKey[key].notificado=true;porKey[key].notificadoEm=p.notificadoEm;}
+    if(p.notificado&&p.notificadoEm>(porKey[key].notificadoEm||0)){porKey[key].notificado=true;porKey[key].notificadoEm=p.notificadoEm;}
   });
 
-  // 2. Scan presences of sessions this month — find confirmed athletes with no payment yet
+  // 2. Presences — add athletes who confirmed but have no payment record yet
   const mesStr=String(mes).padStart(2,'0');
   Object.entries(S.sessoes).forEach(([sessId,s])=>{
     if(!s.data||!s.data.startsWith(ano+'-'+mesStr))return;
     Object.entries(S.presencas[sessId]||{}).forEach(([,c])=>{
       if(!c.nome)return;
-      let atletaId=c.atletaId||null;
-      if(!atletaId){
-        const m=Object.entries(S.atletas).find(([,a])=>a.ativo!==false&&(a.nome||'').toLowerCase()===(c.nome||'').toLowerCase());
-        if(m)atletaId=m[0];
+      const atletaId=_resolveAtletaId(c.atletaId,c.nome);
+      const key=atletaId||('n:'+(c.nome||'').toLowerCase().trim());
+      if(porKey[key]){
+        // Entry already exists — just ensure tel is filled
+        if((c.tel||'')&&!porKey[key].tel)porKey[key].tel=c.tel;
+        return;
       }
-      const key=atletaId||('n:'+c.nome.toLowerCase());
       const at=atletaId?S.atletas[atletaId]:null;
-      const tel=at?.telefone||c.tel||'';
-      if(porKey[key]){if(tel&&!porKey[key].tel)porKey[key].tel=tel;return;}
-      porKey[key]={atletaId,nome:at?.nome||c.nome,local:at?.local||'',tel,pags:[],pendente:40,pago:0,fromPresenca:true};
+      porKey[key]={atletaId:atletaId||null,nome:at?.nome||c.nome,local:at?.local||'',tel:at?.telefone||c.tel||'',pags:[],pendente:40,pago:0,fromPresenca:true,notificado:false,notificadoEm:0};
     });
   });
 
@@ -1407,15 +1421,26 @@ function abrirWhatsAppPagamento(atletaId,nome,telRaw,pagId){
   const url=phone?'https://wa.me/'+phone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
   if(!phone)showToast('Telefone não encontrado — WhatsApp aberto sem número.','');
   window.open(url,'_blank');
-  // Mark as notified
+  // Mark as notified — prefer updating existing record, only create if none exists
   const ts=Date.now();
   if(pagId){
     db.ref('ajf/pagamentos/'+pagId).update({notificado:true,notificadoEm:ts});
   } else {
-    const key=uid();
-    const payload={atletaNome:nome,mes,ano,valor:total,pago:false,pendente:true,tipo:'treino',notificado:true,notificadoEm:ts,ts};
-    if(atletaId)payload.atletaId=atletaId;
-    db.ref('ajf/pagamentos/'+key).set(payload);
+    // Check if a treino payment already exists for this athlete this month
+    const existente=Object.entries(S.pagamentos).find(([,p])=>{
+      if(p.tipo!=='treino'||p.mes!=mes||p.ano!=ano)return false;
+      if(atletaId&&p.atletaId===atletaId)return true;
+      if(!atletaId&&(p.atletaNome||'').toLowerCase().trim()===(nome||'').toLowerCase().trim())return true;
+      return false;
+    });
+    if(existente){
+      db.ref('ajf/pagamentos/'+existente[0]).update({notificado:true,notificadoEm:ts});
+    } else {
+      const key=uid();
+      const payload={atletaNome:nome,mes,ano,valor:total,pago:false,pendente:true,tipo:'treino',notificado:true,notificadoEm:ts,ts};
+      if(atletaId)payload.atletaId=atletaId;
+      db.ref('ajf/pagamentos/'+key).set(payload);
+    }
   }
 }
 
