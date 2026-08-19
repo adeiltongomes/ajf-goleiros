@@ -850,11 +850,22 @@ function _buildTreinoPorAtl(mes,ano){
     return key;
   };
 
-  // 1. Payment records
-  Object.entries(S.pagamentos).forEach(([pid,p])=>{
+  // 1. Payment records — deduplica por sessaoId por atleta
+  const sessSeen={}; // key -> Set de sessaoIds já vistos
+  Object.entries(S.pagamentos).sort((a,b)=>b[1].ts-a[1].ts).forEach(([pid,p])=>{
     if(p.tipo!=='treino'||p.mes!=mes||p.ano!=ano)return;
     const atletaId=_resolveAtletaId(p.atletaId,p.atletaNome);
     const key=upsert(atletaId,p.atletaNome,'',p.local||'');
+    // Se tem sessaoId, ignora duplicatas do mesmo sessaoId para este atleta
+    if(p.sessaoId){
+      if(!sessSeen[key])sessSeen[key]=new Set();
+      if(sessSeen[key].has(p.sessaoId)){
+        // Remove o duplicado do Firebase silenciosamente
+        db.ref('ajf/pagamentos/'+pid).remove();
+        return;
+      }
+      sessSeen[key].add(p.sessaoId);
+    }
     porKey[key].pags.push({...p,id:pid});
     if(p.pago||p.comprovante)porKey[key].pago+=Number(p.valor||0);
     else porKey[key].pendente+=Number(p.valor||0);
