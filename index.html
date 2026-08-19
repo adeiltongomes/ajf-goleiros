@@ -904,27 +904,60 @@ function _mkTreinoRow([key,e]){
   const totalVal=e.pago+e.pendente;
   const accentClr=isPago?'#22c55e':hasComp?'#f59e0b':'#ef4444';
 
-  // Detalhe de cada sessão/pagamento
+  // Resolve a melhor data disponível para um pagamento
+  const _dataRow=(p)=>{
+    const sess=p.sessaoId?S.sessoes[p.sessaoId]:null;
+    if(sess?.data)return new Date(sess.data+'T12:00:00');
+    // Sem sessaoId: busca sessões onde este atleta confirmou presença no mesmo mês
+    const mesStr=String(p.mes||now.getMonth()+1).padStart(2,'0');
+    const anoStr=String(p.ano||now.getFullYear());
+    for(const[sid,s]of Object.entries(S.sessoes)){
+      if(!s.data||!s.data.startsWith(anoStr+'-'+mesStr))continue;
+      const press=S.presencas[sid]||{};
+      const achou=Object.values(press).some(c=>{
+        if(e.atletaId&&c.atletaId===e.atletaId)return true;
+        return(c.nome||'').toLowerCase().trim()===(e.nome||'').toLowerCase().trim();
+      });
+      if(achou)return new Date(s.data+'T12:00:00');
+    }
+    return p.ts?new Date(p.ts):null;
+  };
+  const fmtData=(dt)=>dt?dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}):'Treino';
+
+  // Detalhe de cada pagamento
   let detailHtml='';
   if(e.fromPresenca){
-    detailHtml='<div style="display:flex;align-items:center;gap:.625rem;padding:.5rem .625rem;background:rgba(239,68,68,.07);border-radius:8px">'
-      +'<div style="width:36px;height:36px;border-radius:7px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">📅</div>'
-      +'<div style="flex:1"><div style="font-size:.8rem;color:#fff;font-weight:600">Treino confirmado</div>'
-      +'<div style="font-size:.7rem;color:var(--text2)">Aguardando comprovante · R$ 40,00</div></div>'
-      +'<span style="font-size:.8rem;font-weight:700;color:#ef4444">R$ 40,00</span>'
-      +'<span class="badge bd" style="font-size:.62rem">Pendente</span>'
-      +'</div>';
+    // Busca as sessões reais confirmadas para mostrar as datas
+    const mesStr=String(now.getMonth()+1).padStart(2,'0');
+    const anoStr=String(now.getFullYear());
+    const sessConf=Object.entries(S.sessoes).filter(([sid,s])=>{
+      if(!s.data||!s.data.startsWith(anoStr+'-'+mesStr))return false;
+      return Object.values(S.presencas[sid]||{}).some(c=>{
+        if(e.atletaId&&c.atletaId===e.atletaId)return true;
+        return(c.nome||'').toLowerCase().trim()===(e.nome||'').toLowerCase().trim();
+      });
+    }).sort((a,b)=>a[1].data.localeCompare(b[1].data));
+    const rows=sessConf.length?sessConf:[[null,null]];
+    detailHtml=rows.map(([,s])=>{
+      const dtStr=s?.data?fmtData(new Date(s.data+'T12:00:00')):'Treino confirmado';
+      return '<div style="display:flex;align-items:center;gap:.625rem;padding:.5rem .625rem;background:rgba(239,68,68,.07);border-radius:8px;margin-bottom:.3rem">'
+        +'<div style="width:36px;height:36px;border-radius:7px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">📅</div>'
+        +'<div style="flex:1"><div style="font-size:.82rem;color:#fff;font-weight:700">'+dtStr+'</div>'
+        +'<div style="font-size:.7rem;color:var(--text2)">R$ 40,00</div></div>'
+        +'<span class="badge bd" style="font-size:.62rem">Pendente</span>'
+        +'</div>';
+    }).join('');
   } else {
     detailHtml=e.pags.map(p=>{
-      const sess=p.sessaoId?S.sessoes[p.sessaoId]:null;
-      const dataStr=sess?.data?new Date(sess.data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}):'Sessão';
+      const dt=_dataRow(p);
+      const dataStr=fmtData(dt);
       const rowPago=p.pago||p.comprovante;
       const rowClr=rowPago?'#22c55e':'#ef4444';
       return '<div style="display:flex;align-items:center;gap:.625rem;padding:.5rem .625rem;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:.3rem">'
         +(p.comprovante
           ?'<img src="'+p.comprovante+'" style="width:36px;height:36px;object-fit:cover;border-radius:7px;border:1.5px solid '+rowClr+';cursor:pointer;flex-shrink:0" onclick="viewImage(\''+p.comprovante+'\')">'
           :'<div style="width:36px;height:36px;border-radius:7px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">📅</div>')
-        +'<div style="flex:1"><div style="font-size:.8rem;color:#fff;font-weight:600">'+dataStr+'</div>'
+        +'<div style="flex:1"><div style="font-size:.82rem;color:#fff;font-weight:700">'+dataStr+'</div>'
         +'<div style="font-size:.7rem;color:var(--text2)">R$ '+Number(p.valor||40).toFixed(2).replace('.',',')+'</div></div>'
         +(rowPago?'<span class="badge bs" style="font-size:.62rem">✓ Pago</span>':'<span class="badge bd" style="font-size:.62rem">Pendente</span>')
         +'</div>';
