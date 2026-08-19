@@ -833,10 +833,11 @@ function _buildTreinoPorAtl(mes,ano){
     const at=p.atletaId?S.atletas[p.atletaId]:null;
     const key=p.atletaId||(p.atletaNome?'n:'+p.atletaNome.toLowerCase():null);
     if(!key)return;
-    if(!porKey[key])porKey[key]={atletaId:p.atletaId||null,nome:p.atletaNome||at?.nome||'—',local:at?.local||'',tel:at?.telefone||'',pags:[],pendente:0,pago:0};
+    if(!porKey[key])porKey[key]={atletaId:p.atletaId||null,nome:p.atletaNome||at?.nome||'—',local:at?.local||'',tel:at?.telefone||'',pags:[],pendente:0,pago:0,notificado:false,notificadoEm:0};
     porKey[key].pags.push({...p,id:pid});
     if(p.pago)porKey[key].pago+=Number(p.valor||0);
     else porKey[key].pendente+=Number(p.valor||0);
+    if(p.notificado&&p.notificadoEm>( porKey[key].notificadoEm||0)){porKey[key].notificado=true;porKey[key].notificadoEm=p.notificadoEm;}
   });
 
   // 2. Scan presences of sessions this month — find confirmed athletes with no payment yet
@@ -880,9 +881,12 @@ function _mkTreinoRow([key,e]){
     +(!atletaId?'&nbsp;<button class="badge bn" style="cursor:pointer;border:none;text-decoration:underline;text-underline-offset:2px" onclick="cadastrarDaPresenca(\''+nomeEsc+'\')" title="Clique para cadastrar">+ Cadastrar</button>':'')
     +'</div></div>'
     +'<div style="display:flex;gap:.35rem">'
-    +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+( e.tel||'').replace(/\D/g,'')+'\')">📲</button>'
-    +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
-    +(primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
+    +(e.notificado
+      ?'<span style="font-size:.65rem;color:var(--success);white-space:nowrap">📲 Enviado<br>'+new Date(e.notificadoEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>'
+      :'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+(e.tel||'').replace(/\D/g,'')+'\','+(primPend?'\''+primPend.id+'\'':'null')+')">📲 Cobrar</button>'
+    )
+    +(e.fromPresenca&&!e.notificado?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
+    +(!e.fromPresenca&&primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
     +'</div></div>';
 }
 
@@ -915,12 +919,16 @@ function renderMensalidades(q){
   const totalPend=entradas.reduce((s,[,e])=>s+e.pendente,0);
   const totalPago=entradas.reduce((s,[,e])=>s+e.pago,0);
 
+  const naoNotif=entradas.filter(([,e])=>!e.notificado&&e.pendente>0);
   let html='<div style="margin-bottom:.875rem">'
-    +'<div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:.25rem">'+MESES[mes]+' '+ano+'</div>'
-    +'<div style="display:flex;gap:.625rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
+    +'<div><div style="font-size:1rem;font-weight:700;color:#fff">'+MESES[mes]+' '+ano+'</div>'
+    +'<div style="display:flex;gap:.4rem;margin-top:.2rem">'
     +(totalPend>0?'<span class="badge bd">⚠️ '+fmtMoney(totalPend)+' pendente</span>':'')
     +(totalPago>0?'<span class="badge bs">✓ '+fmtMoney(totalPago)+' recebido</span>':'')
     +(entradas.length===0?'<span class="badge bn">Nenhuma cobrança</span>':'')
+    +'</div></div>'
+    +(naoNotif.length>0?'<button class="btn btn-g btn-sm" onclick="enviarCobrancaTodos()" style="white-space:nowrap;flex-shrink:0">📲 Cobrar todos ('+naoNotif.length+')</button>':'')
     +'</div></div>'
     +'<div style="position:relative;margin-bottom:.875rem">'
     +'<span style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none">🔍</span>'
@@ -931,6 +939,23 @@ function renderMensalidades(q){
   if(q&&filtrados.length===0)return html+'<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div></div>';
   html+='<div id="fin-lista">'+_renderTreinoLista(filtrados)+'</div>';
   return html;
+}
+
+function enviarCobrancaTodos(){
+  const now=new Date();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const entradas=_buildTreinoPorAtl(mes,ano);
+  const pendentes=entradas.filter(([,e])=>!e.notificado&&e.pendente>0);
+  if(pendentes.length===0){showToast('Todos já foram notificados!','ok');return;}
+  if(!confirm('Enviar cobrança via WhatsApp para '+pendentes.length+' goleiro'+(pendentes.length>1?'s':'')+' pendente'+(pendentes.length>1?'s':'')+' ?'))return;
+  pendentes.forEach(([,e],i)=>{
+    setTimeout(()=>{
+      const atletaId=e.atletaId;
+      const primPend=e.fromPresenca?null:e.pags.find(p=>!p.pago);
+      abrirWhatsAppPagamento(atletaId||null,e.nome,(e.tel||'').replace(/\D/g,''),primPend?primPend.id:null);
+    },i*1200);
+  });
+  showToast('Abrindo WhatsApp para '+pendentes.length+' goleiro'+(pendentes.length>1?'s':'')+' ...','ok');
 }
 
 function cadastrarDaPresenca(nome){
@@ -1322,15 +1347,47 @@ function copiarLinkPagamento(atletaId){
   else{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Link copiado!','ok');}
 }
 
-function abrirWhatsAppPagamento(atletaId,nome,telRaw){
+function abrirWhatsAppPagamento(atletaId,nome,telRaw,pagId){
+  const now=new Date();
+  const mesNome=MESES[now.getMonth()+1];
+  const ano=now.getFullYear();
   const link=atletaId?'https://adeiltongomes.github.io/ajf-goleiros/#pagar/'+atletaId:null;
-  const msg='Olá '+nome+'! 🥅\n\n*AJF Academia de Goleiros*\n\nSua presença no treino foi confirmada! Realize o pagamento de *R$ 40,00* via Pix:\n\n🔑 Chave Pix: *ajfgoleiros*\n\n'+(link?'📲 Clique no link para enviar o comprovante:\n'+link+'\n\n':'')+'Após o pagamento'+(link?', envie o comprovante pelo link acima':', envie o comprovante para o administrador')+'.\n\nObrigado! 🙏';
-  // Build phone: strip non-digits, add Brazil code 55 if missing
+  const msg=
+'🥅 *AJF ACADEMIA DE GOLEIROS* 🥅\n'
++'━━━━━━━━━━━━━━━━━━━━━━━\n\n'
++'Olá, *'+nome+'*! 👋\n\n'
++'Sua presença no treino foi confirmada com sucesso! ✅\n\n'
++'Para garantir sua participação, realize o pagamento:\n\n'
++'━━━━━━━━━━━━━━━━━━━━━━━\n'
++'💳 *PAGAMENTO VIA PIX*\n'
++'━━━━━━━━━━━━━━━━━━━━━━━\n\n'
++'💰 *Valor:* R$ 40,00\n'
++'📅 *Referência:* '+mesNome+' '+ano+'\n\n'
++'🔑 *Chave Pix:*\n'
++'*ajfgoleiros*\n\n'
++(link
+  ?'📲 *Envie seu comprovante pelo link:*\n'+link+'\n\n'
+  :'📸 Envie o comprovante diretamente para o administrador.\n\n'
+)
++'━━━━━━━━━━━━━━━━━━━━━━━\n'
++'_Qualquer dúvida, fale conosco._ 🤝\n'
++'⚽ *AJF Academia de Goleiros*';
   const digits=(telRaw||'').replace(/\D/g,'');
   const phone=digits?(digits.startsWith('55')?digits:'55'+digits):'';
   const url=phone?'https://wa.me/'+phone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
   if(!phone)showToast('Telefone não encontrado — WhatsApp aberto sem número.','');
   window.open(url,'_blank');
+  // Mark as notified in Firebase
+  const ts=Date.now();
+  if(pagId){
+    db.ref('ajf/pagamentos/'+pagId).update({notificado:true,notificadoEm:ts});
+  } else {
+    // fromPresenca — create payment record
+    const key=uid();
+    const payload={atletaNome:nome,mes:now.getMonth()+1,ano,valor:40,pago:false,pendente:true,tipo:'treino',notificado:true,notificadoEm:ts,ts};
+    if(atletaId)payload.atletaId=atletaId;
+    db.ref('ajf/pagamentos/'+key).set(payload);
+  }
 }
 
 // ── TREINADORES ────────────────────────────────────
