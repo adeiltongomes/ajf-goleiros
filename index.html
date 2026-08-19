@@ -824,117 +824,122 @@ function renderFinanceiro(){
   el.innerHTML='<div class="fade-up">'+logoBar('Financeiro')+tabHtml+body+'</div>';
 }
 
+function _buildTreinoPorAtl(mes,ano){
+  const porKey={};
+
+  // 1. Payment records already saved
+  Object.entries(S.pagamentos).forEach(([pid,p])=>{
+    if(p.tipo!=='treino'||p.mes!=mes||p.ano!=ano)return;
+    const at=p.atletaId?S.atletas[p.atletaId]:null;
+    const key=p.atletaId||(p.atletaNome?'n:'+p.atletaNome.toLowerCase():null);
+    if(!key)return;
+    if(!porKey[key])porKey[key]={atletaId:p.atletaId||null,nome:p.atletaNome||at?.nome||'—',local:at?.local||'',pags:[],pendente:0,pago:0};
+    porKey[key].pags.push({...p,id:pid});
+    if(p.pago)porKey[key].pago+=Number(p.valor||0);
+    else porKey[key].pendente+=Number(p.valor||0);
+  });
+
+  // 2. Scan presences of sessions this month — find confirmed athletes with no payment yet
+  const mesStr=String(mes).padStart(2,'0');
+  Object.entries(S.sessoes).forEach(([sessId,s])=>{
+    if(!s.data||!s.data.startsWith(ano+'-'+mesStr))return;
+    Object.entries(S.presencas[sessId]||{}).forEach(([,c])=>{
+      if(!c.nome)return;
+      // Resolve athlete ID from record or by name match
+      let atletaId=c.atletaId||null;
+      if(!atletaId){
+        const m=Object.entries(S.atletas).find(([,a])=>a.ativo!==false&&(a.nome||'').toLowerCase()===(c.nome||'').toLowerCase());
+        if(m)atletaId=m[0];
+      }
+      const key=atletaId||('n:'+c.nome.toLowerCase());
+      if(porKey[key])return; // already has payment record
+      const at=atletaId?S.atletas[atletaId]:null;
+      porKey[key]={atletaId,nome:at?.nome||c.nome,local:at?.local||'',pags:[],pendente:40,pago:0,fromPresenca:true};
+    });
+  });
+
+  return Object.entries(porKey).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+}
+
+function _mkTreinoRow([key,e]){
+  const atletaId=e.atletaId;
+  const pendSess=e.fromPresenca?1:e.pags.filter(p=>!p.pago).length;
+  const pagoSess=e.fromPresenca?0:e.pags.filter(p=>p.pago).length;
+  const primPend=e.fromPresenca?null:e.pags.find(p=>!p.pago);
+  const avCls=e.local==='penha'?'av-p':e.local==='guarulhos'?'av-gu':'av-g';
+  const nomeEsc=e.nome.replace(/'/g,"\\'");
+  const now=new Date();
+  return '<div class="fin-row">'
+    +'<div class="av '+avCls+'">'+initials(e.nome)+'</div>'
+    +'<div style="flex:1">'
+    +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+e.nome+'</div>'
+    +'<div style="font-size:.72rem;margin-top:3px">'
+    +(e.pendente>0?'<span style="color:var(--danger);font-weight:600">'+pendSess+' sessão'+(pendSess>1?'ões':'')+' · '+fmtMoney(e.pendente)+'</span>':'')
+    +(e.pendente>0&&e.pago>0?'&nbsp;&nbsp;':'')
+    +(e.pago>0?'<span style="color:var(--success)">✓ '+fmtMoney(e.pago)+' pago</span>':'')
+    +(!atletaId?'&nbsp;<span class="badge bn">Não cadastrado</span>':'')
+    +'</div></div>'
+    +'<div style="display:flex;gap:.35rem">'
+    +(atletaId?'<button class="btn btn-sm btn-o" title="Copiar link" onclick="copiarLinkPagamento(\''+atletaId+'\')">🔗</button>':'')
+    +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+( atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
+    +(primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
+    +'</div></div>';
+}
+
+function _renderTreinoLista(entradas){
+  if(entradas.length===0)return'<div class="emp"><div class="emp-ic">📋</div><div class="emp-t">Nenhuma cobrança este mês</div><div class="emp-s">As cobranças aparecem quando os goleiros confirmam presença nas sessões.</div></div>';
+  const penha=entradas.filter(([,e])=>e.local==='penha');
+  const guar=entradas.filter(([,e])=>e.local==='guarulhos');
+  const outros=entradas.filter(([,e])=>e.local!=='penha'&&e.local!=='guarulhos');
+  const pendPenha=penha.filter(([,e])=>e.pendente>0).length;
+  const pendGuar=guar.filter(([,e])=>e.pendente>0).length;
+  const pendOutros=outros.filter(([,e])=>e.pendente>0).length;
+  const grp=(list,cor,label,pendN,top)=>{
+    if(!list.length)return'';
+    return'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.625rem;margin-top:'+(top?'1.25rem':'.25rem')+'">'
+      +(cor?'<span style="width:10px;height:10px;border-radius:50%;background:'+cor+';display:inline-block;flex-shrink:0"></span>':'')
+      +'<span style="font-size:.72rem;font-weight:700;color:'+(cor||'var(--text2)')+';text-transform:uppercase;letter-spacing:.08em">'+label+'</span>'
+      +(pendN>0?'<span class="badge bd">'+pendN+' pendente'+(pendN>1?'s':'')+'</span>':'<span class="badge bs">Em dia</span>')
+      +'</div>'+list.map(_mkTreinoRow).join('');
+  };
+  return grp(penha,'var(--penha)','Penha',pendPenha,false)
+    +grp(guar,'var(--guarulhos)','Guarulhos',pendGuar,penha.length>0)
+    +grp(outros,'','Sem local definido',pendOutros,penha.length>0||guar.length>0);
+}
+
 function renderMensalidades(q){
   q=(q||document.getElementById('fin-busca')?.value||'').toLowerCase().trim();
   const now=new Date();
   const mes=now.getMonth()+1,ano=now.getFullYear();
-  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  const entradas=_buildTreinoPorAtl(mes,ano);
+  const totalPend=entradas.reduce((s,[,e])=>s+e.pendente,0);
+  const totalPago=entradas.reduce((s,[,e])=>s+e.pago,0);
 
-  // Session charges (tipo:'treino') — group unpaid by athlete
-  const treinosPorAtl={};
-  Object.entries(S.pagamentos).forEach(([pid,p])=>{
-    if(p.tipo==='treino'&&p.mes==mes&&p.ano==ano&&p.atletaId){
-      if(!treinosPorAtl[p.atletaId])treinosPorAtl[p.atletaId]={pags:[],pago:0,pendente:0};
-      treinosPorAtl[p.atletaId].pags.push({...p,id:pid});
-      if(p.pago)treinosPorAtl[p.atletaId].pago+=Number(p.valor||0);
-      else treinosPorAtl[p.atletaId].pendente+=Number(p.valor||0);
-    }
-  });
-  const pendenteTreino=Object.keys(treinosPorAtl).filter(id=>treinosPorAtl[id].pendente>0);
-
-  let html='';
-
-  // ── Session charges block ──
-  if(pendenteTreino.length>0){
-    html+='<div class="card" style="margin-bottom:1.25rem;border-color:rgba(239,68,68,.3)">'
-      +'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem">'
-      +'<span style="font-size:1rem">⚠️</span>'
-      +'<div style="font-size:.825rem;font-weight:700;color:#fff">Cobranças por Sessão — '+MESES[mes]+'</div>'
-      +'<span class="badge bd">'+pendenteTreino.length+' pendentes</span>'
-      +'</div>';
-    html+=pendenteTreino.map(atletaId=>{
-      const at=S.atletas[atletaId];if(!at)return'';
-      const info=treinosPorAtl[atletaId];
-      const sessCount=info.pags.filter(p=>!p.pago).length;
-      return '<div class="fin-row">'
-        +'<div class="av '+(at.local==='penha'?'av-p':'av-gu')+'">'+initials(at.nome)+'</div>'
-        +'<div style="flex:1">'
-        +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+at.nome+'</div>'
-        +'<div style="font-size:.72rem;color:var(--danger);font-weight:600;margin-top:2px">'+sessCount+' sessão'+(sessCount>1?'ões':'')+' · R$ '+info.pendente.toFixed(0)+' pendente'+(info.pago?'&nbsp;·&nbsp;<span style="color:var(--success)">R$ '+info.pago.toFixed(0)+' pago</span>':'')+'</div>'
-        +'</div>'
-        +'<button class="btn btn-sm btn-o" title="Copiar link de pagamento" onclick="copiarLinkPagamento(\''+atletaId+'\')">🔗</button>'
-        +'</div>';
-    }).join('');
-    html+='</div>';
-  }
-
-  // ── Progress bar ──
-  const pagoPorAtl={};
-  Object.entries(S.pagamentos).forEach(([pid,p])=>{
-    if(p.mes==mes&&p.ano==ano&&p.tipo==='mensalidade')pagoPorAtl[p.atletaId]={...p,id:pid};
-  });
-  const pagos=ativos.filter(([id])=>pagoPorAtl[id]?.pago).length;
-  const pct=ativos.length?Math.round(pagos/ativos.length*100):0;
-  html+='<div style="margin-bottom:1rem">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
-    +'<div><div style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Mensalidades — '+MESES[mes]+' '+ano+'</div>'
-    +'<div style="font-size:.7rem;color:var(--text2)">'+pagos+' de '+ativos.length+' pagaram ('+pct+'%)</div></div>'
-    +'<div style="font-size:1.1rem;font-weight:800;color:'+(pct<50?'var(--danger)':pct<80?'var(--warn)':'var(--success)')+'">'+pct+'%</div>'
-    +'</div><div class="prog"><div class="prog-f" style="width:'+pct+'%;background:'+(pct<50?'var(--danger)':pct<80?'var(--warn)':'var(--success)')+'"></div></div>'
-    +'</div>'
+  let html='<div style="margin-bottom:.875rem">'
+    +'<div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:.25rem">'+MESES[mes]+' '+ano+'</div>'
+    +'<div style="display:flex;gap:.625rem">'
+    +(totalPend>0?'<span class="badge bd">⚠️ '+fmtMoney(totalPend)+' pendente</span>':'')
+    +(totalPago>0?'<span class="badge bs">✓ '+fmtMoney(totalPago)+' recebido</span>':'')
+    +(entradas.length===0?'<span class="badge bn">Nenhuma cobrança</span>':'')
+    +'</div></div>'
     +'<div style="position:relative;margin-bottom:.875rem">'
     +'<span style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none">🔍</span>'
     +'<input id="fin-busca" class="finp" type="search" placeholder="Buscar por nome..." style="padding-left:2.2rem" value="'+q.replace(/"/g,'&quot;')+'" oninput="renderMensalidadesFiltro(this.value)">'
     +'</div>';
-  if(ativos.length===0)return html+'<div class="emp"><div class="emp-ic">👥</div><div class="emp-t">Nenhum atleta cadastrado</div></div>';
-  const filtrados=q?ativos.filter(([,a])=>(a.nome||'').toLowerCase().includes(q)):ativos;
-  if(filtrados.length===0)return html+'<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div><div class="emp-s">Tente outro nome.</div></div>';
 
-  const mkRow=([id,at])=>{
-    const pg=pagoPorAtl[id];const pago=pg?.pago;
-    return '<div class="fin-row">'
-      +'<div class="av '+(at.local==='penha'?'av-p':'av-gu')+'">'+initials(at.nome)+'</div>'
-      +'<div style="flex:1">'
-      +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+at.nome+'</div>'
-      +'<div style="display:flex;gap:.3rem;margin-top:2px">'
-      +(pago?'<span class="badge bs">✓ Pago</span>':'<span class="badge bd">Pendente</span>')
-      +'</div>'
-      +(pg?.obs?'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+pg.obs+'</div>':'')
-      +'</div>'
-      +'<div style="display:flex;gap:.35rem">'
-      +'<button class="btn btn-sm btn-o" title="Copiar link" onclick="copiarLinkPagamento(\''+id+'\')">🔗</button>'
-      +(pg?.comprovante?'<button class="btn btn-sm btn-o" onclick="viewImage(S.pagamentos[\''+pg.id+'\']?.comprovante)">📄</button>':'')
-      +(pago
-        ?'<button class="btn btn-sm btn-d" onclick="desmarcarPago(\''+pg.id+'\')">Desfazer</button>'
-        :'<button class="btn btn-sm btn-s" onclick="abrirPagamento(\''+id+'\',\''+at.nome+'\','+mes+','+ano+')">+ Pago</button>'
-      )
-      +'</div></div>';
-  };
-
-  const penha=filtrados.filter(([,a])=>a.local==='penha');
-  const guar=filtrados.filter(([,a])=>a.local==='guarulhos');
-  const pagPenha=penha.filter(([id])=>pagoPorAtl[id]?.pago).length;
-  const pagGuar=guar.filter(([id])=>pagoPorAtl[id]?.pago).length;
-
-  html+='<div id="fin-lista">';
-  if(penha.length>0){
-    html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.625rem;margin-top:.25rem">'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:var(--penha);display:inline-block;flex-shrink:0"></span>'
-      +'<span style="font-size:.72rem;font-weight:700;color:var(--penha);text-transform:uppercase;letter-spacing:.08em">Penha</span>'
-      +'<span style="font-size:.65rem;color:var(--text3)">'+pagPenha+'/'+penha.length+' pagaram</span>'
-      +'</div>';
-    html+=penha.map(mkRow).join('');
-  }
-  if(guar.length>0){
-    html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.625rem;margin-top:'+(penha.length?'1.25rem':'.25rem')+'">'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:var(--guarulhos);display:inline-block;flex-shrink:0"></span>'
-      +'<span style="font-size:.72rem;font-weight:700;color:var(--guarulhos);text-transform:uppercase;letter-spacing:.08em">Guarulhos</span>'
-      +'<span style="font-size:.65rem;color:var(--text3)">'+pagGuar+'/'+guar.length+' pagaram</span>'
-      +'</div>';
-    html+=guar.map(mkRow).join('');
-  }
-  html+='</div>';
+  const filtrados=q?entradas.filter(([,e])=>e.nome.toLowerCase().includes(q)):entradas;
+  if(q&&filtrados.length===0)return html+'<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div></div>';
+  html+='<div id="fin-lista">'+_renderTreinoLista(filtrados)+'</div>';
   return html;
+}
+
+function criarPagPresenca(atletaId,nome,local,mes,ano){
+  if(!confirm('Confirmar pagamento de R$ 40,00 para '+nome+'?'))return;
+  const key=uid();
+  const payload={atletaNome:nome,mes,ano,valor:40,pago:true,pendente:false,tipo:'treino',pagoEm:Date.now(),ts:Date.now()};
+  if(atletaId)payload.atletaId=atletaId;
+  if(local)payload.local=local;
+  db.ref('ajf/pagamentos/'+key).set(payload,err=>err?showToast('Erro!','err'):showToast('✓ Pagamento registrado!','ok'));
 }
 
 function renderMensalidadesFiltro(q){
@@ -942,53 +947,10 @@ function renderMensalidadesFiltro(q){
   if(!lista)return;
   const now=new Date();
   const mes=now.getMonth()+1,ano=now.getFullYear();
-  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
-  const pagoPorAtl={};
-  Object.entries(S.pagamentos).forEach(([pid,p])=>{
-    if(p.mes==mes&&p.ano==ano&&p.tipo==='mensalidade')pagoPorAtl[p.atletaId]={...p,id:pid};
-  });
-  const filtrados=q?ativos.filter(([,a])=>(a.nome||'').toLowerCase().includes(q.toLowerCase())):ativos;
+  const entradas=_buildTreinoPorAtl(mes,ano);
+  const filtrados=q?entradas.filter(([,e])=>e.nome.toLowerCase().includes(q.toLowerCase())):entradas;
   if(filtrados.length===0){lista.innerHTML='<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div></div>';return;}
-  const mkRow=([id,at])=>{
-    const pg=pagoPorAtl[id];const pago=pg?.pago;
-    return '<div class="fin-row">'
-      +'<div class="av '+(at.local==='penha'?'av-p':'av-gu')+'">'+initials(at.nome)+'</div>'
-      +'<div style="flex:1">'
-      +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+at.nome+'</div>'
-      +'<div style="display:flex;gap:.3rem;margin-top:2px">'
-      +(pago?'<span class="badge bs">✓ Pago</span>':'<span class="badge bd">Pendente</span>')
-      +'</div>'
-      +(pg?.obs?'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+pg.obs+'</div>':'')
-      +'</div>'
-      +'<div style="display:flex;gap:.35rem">'
-      +'<button class="btn btn-sm btn-o" title="Copiar link" onclick="copiarLinkPagamento(\''+id+'\')">🔗</button>'
-      +(pg?.comprovante?'<button class="btn btn-sm btn-o" onclick="viewImage(S.pagamentos[\''+pg.id+'\']?.comprovante)">📄</button>':'')
-      +(pago
-        ?'<button class="btn btn-sm btn-d" onclick="desmarcarPago(\''+pg.id+'\')">Desfazer</button>'
-        :'<button class="btn btn-sm btn-s" onclick="abrirPagamento(\''+id+'\',\''+at.nome+'\','+mes+','+ano+')">+ Pago</button>'
-      )
-      +'</div></div>';
-  };
-  const penha=filtrados.filter(([,a])=>a.local==='penha');
-  const guar=filtrados.filter(([,a])=>a.local==='guarulhos');
-  const pagPenha=penha.filter(([id])=>pagoPorAtl[id]?.pago).length;
-  const pagGuar=guar.filter(([id])=>pagoPorAtl[id]?.pago).length;
-  let html='';
-  if(penha.length>0){
-    html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.625rem">'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:var(--penha);display:inline-block;flex-shrink:0"></span>'
-      +'<span style="font-size:.72rem;font-weight:700;color:var(--penha);text-transform:uppercase;letter-spacing:.08em">Penha</span>'
-      +'<span style="font-size:.65rem;color:var(--text3)">'+pagPenha+'/'+penha.length+' pagaram</span></div>';
-    html+=penha.map(mkRow).join('');
-  }
-  if(guar.length>0){
-    html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.625rem;margin-top:'+(penha.length?'1.25rem':'.25rem')+'">'
-      +'<span style="width:10px;height:10px;border-radius:50%;background:var(--guarulhos);display:inline-block;flex-shrink:0"></span>'
-      +'<span style="font-size:.72rem;font-weight:700;color:var(--guarulhos);text-transform:uppercase;letter-spacing:.08em">Guarulhos</span>'
-      +'<span style="font-size:.65rem;color:var(--text3)">'+pagGuar+'/'+guar.length+' pagaram</span></div>';
-    html+=guar.map(mkRow).join('');
-  }
-  lista.innerHTML=html;
+  lista.innerHTML=_renderTreinoLista(filtrados);
 }
 
 function renderComprovantes(){
