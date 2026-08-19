@@ -880,8 +880,8 @@ function _mkTreinoRow([key,e]){
     +(!atletaId?'&nbsp;<span class="badge bn">Não cadastrado</span>':'')
     +'</div></div>'
     +'<div style="display:flex;gap:.35rem">'
-    +(atletaId?'<button class="btn btn-sm btn-o" title="Copiar link" onclick="copiarLinkPagamento(\''+atletaId+'\')">🔗</button>':'')
-    +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+( atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
+    +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\')">📲</button>'
+    +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
     +(primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
     +'</div></div>';
 }
@@ -1315,6 +1315,12 @@ function copiarLinkPagamento(atletaId){
   const url='https://adeiltongomes.github.io/ajf-goleiros/#pagar/'+atletaId;
   if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>showToast('✓ Link copiado!','ok'));}
   else{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Link copiado!','ok');}
+}
+
+function abrirWhatsAppPagamento(atletaId,nome){
+  const link=atletaId?'https://adeiltongomes.github.io/ajf-goleiros/%23pagar/'+atletaId:null;
+  const msg='Olá '+nome+'! 🥅\n\n*AJF Academia de Goleiros*\n\nSua presença no treino foi confirmada! Realize o pagamento de *R$ 40,00* via Pix:\n\n🔑 Chave Pix: *ajfgoleiros*\n\n'+(link?'📲 Clique no link para enviar o comprovante:\n'+decodeURIComponent(link)+'\n\n':'')+'Após o pagamento'+(link?', envie o comprovante pelo link acima':', envie o comprovante para o administrador')+'.\n\nObrigado! 🙏';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ── TREINADORES ────────────────────────────────────
