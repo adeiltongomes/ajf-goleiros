@@ -804,7 +804,8 @@ function renderFinanceiro(){
   el.innerHTML='<div class="fade-up">'+logoBar('Financeiro')+tabHtml+body+'</div>';
 }
 
-function renderMensalidades(){
+function renderMensalidades(q){
+  q=(q||document.getElementById('fin-busca')?.value||'').toLowerCase().trim();
   const now=new Date();
   const mes=now.getMonth()+1,ano=now.getFullYear();
   const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
@@ -814,15 +815,58 @@ function renderMensalidades(){
   });
   const pagos=ativos.filter(([id])=>pagoPorAtl[id]?.pago).length;
   const pct=ativos.length?Math.round(pagos/ativos.length*100):0;
+  const filtrados=q?ativos.filter(([,a])=>(a.nome||'').toLowerCase().includes(q)):ativos;
   let html='<div style="margin-bottom:1rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
     +'<div><div style="font-size:1rem;font-weight:700;color:#fff">'+MESES[mes]+' '+ano+'</div>'
     +'<div style="font-size:.7rem;color:var(--text2)">'+pagos+' de '+ativos.length+' pagaram ('+pct+'%)</div></div>'
     +'<div style="font-size:1.25rem;font-weight:800;color:'+(pct<50?'var(--danger)':pct<80?'var(--warn)':'var(--success)')+'">'+pct+'%</div>'
     +'</div><div class="prog"><div class="prog-f" style="width:'+pct+'%;background:'+(pct<50?'var(--danger)':pct<80?'var(--warn)':'var(--success)')+'"></div></div>'
+    +'</div>'
+    +'<div style="position:relative;margin-bottom:.875rem">'
+    +'<span style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none">🔍</span>'
+    +'<input id="fin-busca" class="finp" type="search" placeholder="Buscar por nome..." style="padding-left:2.2rem" value="'+q.replace(/"/g,'&quot;')+'" oninput="renderMensalidadesFiltro(this.value)">'
     +'</div>';
   if(ativos.length===0)return html+'<div class="emp"><div class="emp-ic">👥</div><div class="emp-t">Nenhum atleta cadastrado</div></div>';
-  html+=ativos.map(([id,at])=>{
+  if(filtrados.length===0)return html+'<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div><div class="emp-s">Tente outro nome.</div></div>';
+  html+='<div id="fin-lista">'+filtrados.map(([id,at])=>{
+    const pg=pagoPorAtl[id];
+    const pago=pg?.pago;
+    return '<div class="fin-row">'
+      +'<div class="av '+(at.local==='penha'?'av-p':'av-gu')+'">'+initials(at.nome)+'</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+at.nome+'</div>'
+      +'<div style="display:flex;gap:.3rem;margin-top:2px">'
+      +'<span class="badge '+locBadge(at.local)+'">'+locLabel(at.local)+'</span>'
+      +(pago?'<span class="badge bs">✓ Pago</span>':'<span class="badge bd">Pendente</span>')
+      +'</div>'
+      +(pg?.obs?'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+pg.obs+'</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:.35rem">'
+      +'<button class="btn btn-sm btn-o" title="Copiar link de pagamento" onclick="copiarLinkPagamento(\''+id+'\')">🔗</button>'
+      +(pg?.comprovante?'<button class="btn btn-sm btn-o" onclick="viewImage(S.pagamentos[\''+pg.id+'\']?.comprovante)">📄</button>':'')
+      +(pago
+        ?'<button class="btn btn-sm btn-d" onclick="desmarcarPago(\''+pg.id+'\')">Desfazer</button>'
+        :'<button class="btn btn-sm btn-s" onclick="abrirPagamento(\''+id+'\',\''+at.nome+'\','+mes+','+ano+')">+ Pago</button>'
+      )
+      +'</div></div>';
+  }).join('')+'</div>';
+  return html;
+}
+
+function renderMensalidadesFiltro(q){
+  const lista=document.getElementById('fin-lista');
+  if(!lista)return;
+  const now=new Date();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  const pagoPorAtl={};
+  Object.entries(S.pagamentos).forEach(([pid,p])=>{
+    if(p.mes==mes&&p.ano==ano&&p.tipo==='mensalidade')pagoPorAtl[p.atletaId]={...p,id:pid};
+  });
+  const filtrados=q?ativos.filter(([,a])=>(a.nome||'').toLowerCase().includes(q.toLowerCase())):ativos;
+  if(filtrados.length===0){lista.innerHTML='<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div></div>';return;}
+  lista.innerHTML=filtrados.map(([id,at])=>{
     const pg=pagoPorAtl[id];
     const pago=pg?.pago;
     return '<div class="fin-row">'
@@ -844,7 +888,6 @@ function renderMensalidades(){
       )
       +'</div></div>';
   }).join('');
-  return html;
 }
 
 function renderComprovantes(){
