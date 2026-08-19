@@ -528,7 +528,7 @@ let presLocal='penha';
 function renderPresenca(){
   const el=document.getElementById('cp');
   const t=today();
-  const allSess=Object.entries(S.sessoes).sort((a,b)=>a[1].data.localeCompare(b[1].data));
+  const allSess=Object.entries(S.sessoes).sort((a,b)=>a[1].data.localeCompare(b[1].data)||((a[1].hora||'00:00').localeCompare(b[1].hora||'00:00')));
   const filtSess=allSess.filter(([,s])=>s.local===presLocal&&s.data>=t);
   const pastSess=allSess.filter(([,s])=>s.local===presLocal&&s.data<t).reverse().slice(0,3);
 
@@ -1684,27 +1684,38 @@ function renderTreinadores(){
     if(mySess.length===0){
       html+='<div class="alert al-i">Nenhuma sessão agendada para '+locLabel(tr.local)+' no momento.</div>';
     } else {
-      const [nextId,nextS]=mySess[0];
-      const d=new Date(nextS.data+'T12:00:00');
-      const confs=Object.entries(S.presencas[nextId]||{}).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
-      html+='<div class="card card-gold" style="margin-bottom:1rem">'
-        +'<div style="font-size:.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;font-weight:700">PRÓXIMA SESSÃO</div>'
-        +'<div style="font-size:1.1rem;font-weight:800;color:#fff;margin-top:.25rem">'+(nextS.hora||'Treino')+' — '+DIAS[d.getDay()]+', '+fmt(nextS.data)+'</div>'
-        +'<div style="font-size:.875rem;color:var(--gold);font-weight:700;margin-top:.25rem">'+confs.length+' confirmados</div>'
-        +'</div>'
-        +(confs.length===0
-          ?'<div class="alert al-w">Nenhum goleiro confirmou presença ainda.</div>'
-          :'<div class="sec-t" style="margin-bottom:.625rem">Lista de Confirmados</div>'
-           +confs.map(([,c],i)=>'<div class="ath-row">'
-             +'<div style="width:22px;font-size:.875rem;font-weight:700;color:var(--text3)">'+(i+1)+'</div>'
-             +'<div class="av av-g" style="width:36px;height:36px;font-size:.75rem">'+initials(c.nome)+'</div>'
-             +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+c.nome+'</div>'
-             +(c.tel?'<div style="font-size:.7rem;color:var(--text2)">📱 '+c.tel+'</div>':'')
-             +'</div></div>').join('')
-        );
-      if(mySess.length>1){
-        html+='<div class="sec-hdr" style="margin-top:1rem"><span class="sec-t">Próximas Sessões</span></div>'
-          +mySess.slice(1,4).map(([id,s])=>{
+      // Agrupa sessões por data para mostrar cada horário separado
+      const byDate={};
+      mySess.forEach(([id,s])=>{
+        if(!byDate[s.data])byDate[s.data]=[];
+        byDate[s.data].push([id,s]);
+      });
+      const datasOrdenadas=Object.keys(byDate).sort();
+      // Primeira data = próxima — mostra cada horário com sua lista
+      const proximaData=datasOrdenadas[0];
+      const sessoesProxima=byDate[proximaData];
+      const d=new Date(proximaData+'T12:00:00');
+      html+='<div style="font-size:.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:.5rem">PRÓXIMA SESSÃO — '+DIAS[d.getDay()]+', '+fmt(proximaData)+'</div>';
+      sessoesProxima.forEach(([sid,s])=>{
+        const confs=Object.entries(S.presencas[sid]||{}).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+        html+='<div class="card card-gold" style="margin-bottom:.75rem">'
+          +'<div style="font-size:1rem;font-weight:800;color:#fff">⏰ '+(s.hora||'Treino')+'</div>'
+          +'<div style="font-size:.8rem;color:var(--gold);font-weight:600;margin:.2rem 0">'+confs.length+' confirmado'+(confs.length!==1?'s':'')+'</div>'
+          +(confs.length===0
+            ?'<div style="font-size:.78rem;color:var(--text3);margin-top:.5rem">Nenhum goleiro confirmou presença ainda.</div>'
+            :confs.map(([,c],i)=>'<div class="ath-row" style="margin-top:'+(i===0?'.5rem':'.25rem')+'">'
+              +'<div style="width:22px;font-size:.8rem;font-weight:700;color:var(--text3)">'+(i+1)+'</div>'
+              +'<div class="av av-g" style="width:34px;height:34px;font-size:.72rem">'+initials(c.nome)+'</div>'
+              +'<div style="flex:1"><div style="font-size:.85rem;font-weight:600;color:#fff">'+c.nome+'</div>'
+              +(c.tel?'<div style="font-size:.7rem;color:var(--text2)">📱 '+c.tel+'</div>':'')
+              +'</div></div>').join('')
+          )
+          +'</div>';
+      });
+      // Próximas datas
+      if(datasOrdenadas.length>1){
+        html+='<div class="sec-hdr" style="margin-top:.5rem"><span class="sec-t">Próximas Sessões</span></div>'
+          +datasOrdenadas.slice(1,4).flatMap(dt=>byDate[dt]).map(([id,s])=>{
             const dd=new Date(s.data+'T12:00:00');
             const c2=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
             return '<div class="sess-card" style="cursor:default">'
