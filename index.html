@@ -877,7 +877,7 @@ function _mkTreinoRow([key,e]){
     +(e.pendente>0?'<span style="color:var(--danger);font-weight:600">'+pendSess+' sessão'+(pendSess>1?'ões':'')+' · '+fmtMoney(e.pendente)+'</span>':'')
     +(e.pendente>0&&e.pago>0?'&nbsp;&nbsp;':'')
     +(e.pago>0?'<span style="color:var(--success)">✓ '+fmtMoney(e.pago)+' pago</span>':'')
-    +(!atletaId?'&nbsp;<span class="badge bn">Não cadastrado</span>':'')
+    +(!atletaId?'&nbsp;<button class="badge bn" style="cursor:pointer;border:none;text-decoration:underline;text-underline-offset:2px" onclick="cadastrarDaPresenca(\''+nomeEsc+'\')" title="Clique para cadastrar">+ Cadastrar</button>':'')
     +'</div></div>'
     +'<div style="display:flex;gap:.35rem">'
     +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\')">📲</button>'
@@ -931,6 +931,11 @@ function renderMensalidades(q){
   if(q&&filtrados.length===0)return html+'<div class="emp"><div class="emp-ic">🔍</div><div class="emp-t">Nenhum resultado</div></div>';
   html+='<div id="fin-lista">'+_renderTreinoLista(filtrados)+'</div>';
   return html;
+}
+
+function cadastrarDaPresenca(nome){
+  formAtleta();
+  setTimeout(()=>{const el=document.getElementById('f-nome');if(el)el.value=nome;},50);
 }
 
 function criarPagPresenca(atletaId,nome,local,mes,ano){
