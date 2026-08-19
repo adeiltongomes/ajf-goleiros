@@ -1352,23 +1352,28 @@ function abrirWhatsAppPagamento(atletaId,nome,telRaw,pagId){
   const mesNome=MESES[now.getMonth()+1];
   const ano=now.getFullYear();
   const link=atletaId?'https://adeiltongomes.github.io/ajf-goleiros/#pagar/'+atletaId:null;
-  const msg=
-'🥅 *AJF ACADEMIA DE GOLEIROS* 🥅\n'
+  const msg=link
+?'🥅 *AJF ACADEMIA DE GOLEIROS* 🥅\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n\n'
 +'Olá, *'+nome+'*! 👋\n\n'
-+'Sua presença no treino foi confirmada com sucesso! ✅\n\n'
-+'Para garantir sua participação, realize o pagamento:\n\n'
++'Sua presença no treino foi confirmada! ✅\n\n'
++'Para confirmar seu pagamento de *R$ 40,00*, acesse o link abaixo:\n\n'
++'🔗 *'+link+'*\n\n'
++'No link você encontra:\n'
++'💳 A chave Pix para realizar o pagamento\n'
++'📎 Campo para enviar o comprovante\n\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n'
-+'💳 *PAGAMENTO VIA PIX*\n'
++'_Qualquer dúvida, fale conosco._ 🤝\n'
++'⚽ *AJF Academia de Goleiros*'
+:'🥅 *AJF ACADEMIA DE GOLEIROS* 🥅\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n\n'
++'Olá, *'+nome+'*! 👋\n\n'
++'Sua presença no treino foi confirmada! ✅\n\n'
++'Realize o pagamento de *R$ 40,00* via Pix:\n\n'
++'🔑 *Chave Pix:* ajfgoleiros\n'
 +'💰 *Valor:* R$ 40,00\n'
 +'📅 *Referência:* '+mesNome+' '+ano+'\n\n'
-+'🔑 *Chave Pix:*\n'
-+'*ajfgoleiros*\n\n'
-+(link
-  ?'📲 *Envie seu comprovante pelo link:*\n'+link+'\n\n'
-  :'📸 Envie o comprovante diretamente para o administrador.\n\n'
-)
++'📸 Após o pagamento, envie o comprovante para o administrador.\n\n'
 +'━━━━━━━━━━━━━━━━━━━━━━━\n'
 +'_Qualquer dúvida, fale conosco._ 🤝\n'
 +'⚽ *AJF Academia de Goleiros*';
