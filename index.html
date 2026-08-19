@@ -881,12 +881,15 @@ function _mkTreinoRow([key,e]){
   const pendSess=e.fromPresenca?1:e.pags.filter(p=>!p.pago).length;
   const pagoSess=e.fromPresenca?0:e.pags.filter(p=>p.pago).length;
   const primPend=e.fromPresenca?null:e.pags.find(p=>!p.pago);
+  const compPag=e.pags.find(p=>p.comprovante);
+  const comp=compPag?compPag.comprovante:null;
   const avCls=e.local==='penha'?'av-p':e.local==='guarulhos'?'av-gu':'av-g';
   const nomeEsc=e.nome.replace(/'/g,"\\'");
   const now=new Date();
-  return '<div class="fin-row">'
-    +'<div class="av '+avCls+'">'+initials(e.nome)+'</div>'
-    +'<div style="flex:1">'
+  return '<div class="fin-row" style="flex-wrap:wrap;gap:.5rem">'
+    +'<div style="display:flex;align-items:center;gap:.625rem;flex:1;min-width:0">'
+    +'<div class="av '+avCls+'" style="flex-shrink:0">'+initials(e.nome)+'</div>'
+    +'<div style="flex:1;min-width:0">'
     +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+e.nome+'</div>'
     +'<div style="font-size:.72rem;margin-top:3px">'
     +(e.pendente>0?'<span style="color:var(--danger);font-weight:600">'+pendSess+' sessão'+(pendSess>1?'ões':'')+' · '+fmtMoney(e.pendente)+'</span>':'')
@@ -894,7 +897,9 @@ function _mkTreinoRow([key,e]){
     +(e.pago>0?'<span style="color:var(--success)">✓ '+fmtMoney(e.pago)+' pago</span>':'')
     +(!atletaId?'&nbsp;<button class="badge bn" style="cursor:pointer;border:none;text-decoration:underline;text-underline-offset:2px" onclick="cadastrarDaPresenca(\''+nomeEsc+'\')" title="Clique para cadastrar">+ Cadastrar</button>':'')
     +'</div></div>'
-    +'<div style="display:flex;gap:.35rem">'
+    +(comp?'<img src="'+comp+'" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:2px solid '+(e.pago>0?'var(--success)':'rgba(245,158,11,.6)')+';cursor:pointer;flex-shrink:0" onclick="viewImage(\''+comp+'\')" title="Ver comprovante">':'')
+    +'</div>'
+    +'<div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center">'
     +(e.notificado?'<span style="font-size:.65rem;color:var(--success);white-space:nowrap">📲 Enviado<br>'+new Date(e.notificadoEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>':'')
     +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+(e.tel||'').replace(/\D/g,'')+'\','+(primPend?'\''+primPend.id+'\'':'null')+')">📲 Cobrar</button>'
     +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
