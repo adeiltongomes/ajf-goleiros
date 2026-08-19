@@ -1281,6 +1281,11 @@ function renderPagar(){
   }
   const now=new Date();
   const mes=now.getMonth()+1,ano=now.getFullYear();
+  const pagExist=Object.entries(S.pagamentos).find(([,p])=>p.atletaId===pagarAtletaId&&p.mes==mes&&p.ano==ano&&p.comprovante);
+  const jaPago=pagExist&&pagExist[1].pago;
+  const compJaEnviado=pagExist?pagExist[1].comprovante:null;
+  const sessoesConf=_getSessoesConfirmadas(pagarAtletaId,at.nome,mes,ano);
+  const totalSess=sessoesConf.length||1;
   el.innerHTML='<div class="fade-up">'
     +'<div style="text-align:center;padding:1.25rem 0 1rem">'
     +'<img src="'+AJF_LOGO+'" style="width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(245,158,11,.5))">'
@@ -1291,24 +1296,36 @@ function renderPagar(){
     +'<div class="av av-'+(at.local==='penha'?'p':'gu')+'" style="width:56px;height:56px;font-size:1.2rem;margin:0 auto .5rem">'+initials(at.nome)+'</div>'
     +'<div style="font-size:1.1rem;font-weight:800;color:#fff">'+at.nome+'</div>'
     +'<span class="badge '+locBadge(at.local)+'" style="margin-top:.35rem">'+locLabel(at.local)+'</span>'
+    +(sessoesConf.length>0?'<div style="font-size:.72rem;color:var(--text2);margin-top:.5rem">'+sessoesConf.join(' &nbsp;·&nbsp; ')+'</div>':'')
+    +(jaPago?'<div style="margin-top:.75rem"><span class="badge bs" style="font-size:.8rem;padding:.35rem .85rem">✓ Pagamento Confirmado</span></div>':'')
     +'</div>'
-    +'<div class="pix-box">'
-    +'<div class="valor-lbl">Valor por sessão</div>'
-    +'<div class="valor-big">R$ 40,00</div>'
-    +'<div style="font-size:.72rem;color:var(--text2);margin-top:.25rem">'+MESES[mes]+' '+ano+'</div>'
-    +'<div class="div" style="margin:.875rem 0"></div>'
-    +'<div class="pix-label">Chave Pix</div>'
-    +'<div class="pix-key">ajfgoleiros</div>'
-    +'<button class="btn btn-g btn-blk" onclick="copiarChavePix()">📋 Copiar Chave Pix</button>'
-    +'</div>'
-    +'<div class="card" style="margin-bottom:2rem">'
-    +'<div style="font-size:.875rem;font-weight:700;color:#fff;margin-bottom:.75rem">📤 Enviar Comprovante</div>'
-    +'<div class="alert al-i" style="margin-bottom:.875rem;font-size:.75rem">Após realizar o pagamento via Pix, selecione o comprovante abaixo e envie para a academia confirmar.</div>'
-    +'<div id="pag-pub-prev-wrap" style="display:none;margin-bottom:.75rem"><img id="pag-pub-prev" src="" class="thumb"></div>'
-    +'<label class="upl-area" for="pag-pub-file"><div style="font-size:1.75rem">📷</div><div style="font-size:.825rem;font-weight:600;color:var(--text2);margin-top:.375rem">Toque para selecionar o comprovante</div><div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">JPG ou PNG</div></label>'
-    +'<input type="file" id="pag-pub-file" accept="image/*" style="display:none" onchange="previewPagPub(this)">'
-    +'<button class="btn btn-g btn-blk" style="margin-top:.875rem;padding:.75rem;font-size:.925rem" onclick="enviarComprovantePagamento()">✅ Enviar Comprovante</button>'
-    +'</div>'
+    +(jaPago
+      ?'<div class="card" style="text-align:center;margin-bottom:1.5rem;padding:1.25rem">'
+        +'<div style="font-size:.875rem;font-weight:700;color:var(--success);margin-bottom:.75rem">✅ Comprovante recebido</div>'
+        +'<img src="'+compJaEnviado+'" style="max-width:100%;border-radius:12px;border:2px solid var(--success)" onclick="viewImage(\''+compJaEnviado+'\')">'
+        +'<div style="font-size:.72rem;color:var(--text2);margin-top:.625rem">Seu pagamento foi confirmado pela academia. Obrigado! 🎉</div>'
+        +'</div>'
+      :'<div class="pix-box">'
+        +'<div class="valor-lbl">Valor por sessão</div>'
+        +'<div class="valor-big">R$ '+String(totalSess*40)+',00</div>'
+        +'<div style="font-size:.72rem;color:var(--text2);margin-top:.25rem">'+totalSess+' sessão'+(totalSess>1?'ões':'')+' · '+MESES[mes]+' '+ano+'</div>'
+        +'<div class="div" style="margin:.875rem 0"></div>'
+        +'<div class="pix-label">Chave Pix</div>'
+        +'<div class="pix-key">ajfgoleiros</div>'
+        +'<button class="btn btn-g btn-blk" onclick="copiarChavePix()">📋 Copiar Chave Pix</button>'
+        +'</div>'
+        +'<div class="card" style="margin-bottom:2rem">'
+        +'<div style="font-size:.875rem;font-weight:700;color:#fff;margin-bottom:.75rem">📤 Enviar Comprovante</div>'
+        +(compJaEnviado
+          ?'<div style="margin-bottom:.75rem"><div style="font-size:.72rem;color:var(--gold);margin-bottom:.5rem">Comprovante enviado — aguardando confirmação:</div><img src="'+compJaEnviado+'" style="max-width:100%;border-radius:10px;border:1px solid var(--border);cursor:pointer" onclick="viewImage(\''+compJaEnviado+'\')"></div>'
+          :'<div class="alert al-i" style="margin-bottom:.875rem;font-size:.75rem">Após realizar o pagamento via Pix, selecione o comprovante abaixo e envie.</div>'
+        )
+        +'<div id="pag-pub-prev-wrap" style="display:none;margin-bottom:.75rem"><img id="pag-pub-prev" src="" class="thumb"></div>'
+        +'<label class="upl-area" for="pag-pub-file"><div style="font-size:1.75rem">📷</div><div style="font-size:.825rem;font-weight:600;color:var(--text2);margin-top:.375rem">'+(compJaEnviado?'Trocar comprovante':'Toque para selecionar o comprovante')+'</div><div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">JPG ou PNG</div></label>'
+        +'<input type="file" id="pag-pub-file" accept="image/*" style="display:none" onchange="previewPagPub(this)">'
+        +'<button class="btn btn-g btn-blk" style="margin-top:.875rem;padding:.75rem;font-size:.925rem" onclick="enviarComprovantePagamento()">✅ '+(compJaEnviado?'Reenviar Comprovante':'Enviar Comprovante')+'</button>'
+        +'</div>'
+    )
     +'</div>';
 }
 
@@ -1338,17 +1355,17 @@ function enviarComprovantePagamento(){
   const existente=Object.entries(S.pagamentos).find(([,p])=>{
     return p.tipo==='treino'&&p.mes==mes&&p.ano==ano&&p.atletaId===pagarAtletaId;
   });
+  const pagoEm=Date.now();
   const onDone=function(err){
     if(err){showToast('Erro ao enviar. Tente novamente.','err');return;}
-    showToast('✅ Comprovante enviado! Aguarde confirmação.','ok');
-    if(prev){prev._b64=null;prev.src='';document.getElementById('pag-pub-prev-wrap').style.display='none';}
-    const fi=document.getElementById('pag-pub-file');if(fi)fi.value='';
+    showToast('✅ Pagamento confirmado! Obrigado!','ok');
+    renderPagar();
   };
   if(existente){
-    db.ref('ajf/pagamentos/'+existente[0]).update({comprovante:comp,pendente:true,pago:false,ts:Date.now()},onDone);
+    db.ref('ajf/pagamentos/'+existente[0]).update({comprovante:comp,pago:true,pendente:false,pagoEm,ts:pagoEm},onDone);
   } else {
     const key=uid();
-    const payload={atletaId:pagarAtletaId,atletaNome:at.nome,mes,ano,valor:40,pago:false,pendente:true,comprovante:comp,tipo:'treino',ts:Date.now()};
+    const payload={atletaId:pagarAtletaId,atletaNome:at.nome,mes,ano,valor:40,pago:true,pendente:false,comprovante:comp,tipo:'treino',pagoEm,ts:pagoEm};
     db.ref('ajf/pagamentos/'+key).set(payload,onDone);
   }
 }
