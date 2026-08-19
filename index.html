@@ -168,6 +168,12 @@ textarea.finp{resize:vertical;min-height:80px;}
 .conf-count{font-size:.75rem;color:var(--text2);margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;}
 /* Share banner */
 .share-box{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.03));border:1.5px solid var(--gold-border);border-radius:16px;padding:1rem;margin-bottom:1.25rem;text-align:center;}
+/* Pagar (payment public page) */
+.pix-box{background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.04));border:2px solid var(--gold-border);border-radius:18px;padding:1.5rem;text-align:center;margin-bottom:1.25rem;}
+.pix-key{font-size:1.6rem;font-weight:900;color:var(--gold);letter-spacing:.04em;word-break:break-all;margin:.5rem 0;}
+.pix-label{font-size:.62rem;color:var(--text2);font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
+.valor-big{font-size:2.5rem;font-weight:900;color:#fff;line-height:1;}
+.valor-lbl{font-size:.62rem;color:var(--text2);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.25rem;}
 
 </style>
 </head>
@@ -200,6 +206,7 @@ textarea.finp{resize:vertical;min-height:80px;}
   <div id="page-treinadores" class="page"><div class="pg" id="ct"></div></div>
   <div id="page-admin" class="page"><div class="pg" id="cdm"></div></div>
   <div id="page-confirmar" class="page"><div class="pg" id="cconf"></div></div>
+  <div id="page-pagar" class="page"><div class="pg" id="cpag"></div></div>
 </main>
 
 <nav id="nav">
@@ -341,7 +348,7 @@ const db=firebase.database();
 
 // ── State ──────────────────────────────────────────
 let S={atletas:{},sessoes:{},presencas:{},avaliacoes:{},pagamentos:{},pedidos:{},produtos:{},treinadores:{},config:{}};
-let curPage='inicio', adminAuth=false, pinTarget='', finTab='mensalidades', admTab='atletas';
+let curPage='inicio', adminAuth=false, pinTarget='', finTab='mensalidades', admTab='atletas', pagarAtletaId='';
 let cart={}, activeSessId=null, activePagAtleta=null, activePagMes=null, activePagAno=null;
 let evalSessId=null, evalAtletaId=null, evalData={};
 const EVAL_CRIT=[
@@ -427,7 +434,7 @@ function goTo(page){
   pageEl.classList.add('active');
   document.querySelectorAll('.nav-i').forEach(b=>{b.classList.toggle('active',b.dataset.p===page);});
   curPage=page;
-  location.hash=page;
+  location.hash=(page==='pagar'&&pagarAtletaId)?'pagar/'+pagarAtletaId:page;
   render(page);
 }
 
@@ -439,6 +446,7 @@ function render(page){
   else if(page==='loja')renderLoja();
   else if(page==='treinadores')renderTreinadores();
   else if(page==='confirmar')renderConfirmar();
+  else if(page==='pagar')renderPagar();
   else if(page==='admin')renderAdmin();
 }
 
@@ -828,6 +836,7 @@ function renderMensalidades(){
       +(pg?.obs?'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+pg.obs+'</div>':'')
       +'</div>'
       +'<div style="display:flex;gap:.35rem">'
+      +'<button class="btn btn-sm btn-o" title="Copiar link de pagamento" onclick="copiarLinkPagamento(\''+id+'\')">🔗</button>'
       +(pg?.comprovante?'<button class="btn btn-sm btn-o" onclick="viewImage(S.pagamentos[\''+pg.id+'\']?.comprovante)">📄</button>':'')
       +(pago
         ?'<button class="btn btn-sm btn-d" onclick="desmarcarPago(\''+pg.id+'\')">Desfazer</button>'
@@ -840,18 +849,43 @@ function renderMensalidades(){
 
 function renderComprovantes(){
   const comps=Object.entries(S.pagamentos).filter(([,p])=>p.comprovante).sort((a,b)=>b[1].ts-a[1].ts);
-  if(comps.length===0)return'<div class="emp"><div class="emp-ic">📄</div><div class="emp-t">Nenhum comprovante enviado</div></div>';
-  return'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.625rem">'
-    +comps.map(([pid,p])=>{
+  if(comps.length===0)return'<div class="emp"><div class="emp-ic">📄</div><div class="emp-t">Nenhum comprovante enviado</div><div class="emp-s">Os goleiros enviarão via link individual.</div></div>';
+  const pending=comps.filter(([,p])=>!p.pago);
+  const confirmed=comps.filter(([,p])=>p.pago);
+  let html='';
+  if(pending.length>0){
+    html+='<div class="sec-hdr" style="margin-bottom:.625rem"><span class="sec-t" style="color:#f59e0b">⏳ Aguardando Confirmação ('+pending.length+')</span></div>';
+    html+=pending.map(([pid,p])=>{
       const at=S.atletas[p.atletaId];
-      return '<div class="card" style="padding:.625rem">'
-        +'<img src="'+p.comprovante+'" class="thumb" onclick="viewImage(\''+p.comprovante+'\')">'
-        +'<div style="font-size:.75rem;font-weight:600;color:#fff;margin-top:.375rem">'+(at?.nome||p.atletaNome||'—')+'</div>'
-        +'<div style="font-size:.65rem;color:var(--text2)">'+MESES[p.mes]+' '+p.ano+'</div>'
-        +(p.valor?'<div style="font-size:.75rem;color:var(--gold);font-weight:700">'+fmtMoney(p.valor)+'</div>':'')
+      return '<div class="card" style="padding:.875rem;margin-bottom:.625rem;border-color:rgba(245,158,11,.35)">'
+        +'<div style="display:flex;gap:.75rem;align-items:flex-start">'
+        +'<img src="'+p.comprovante+'" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;flex-shrink:0" onclick="viewImage(\''+p.comprovante+'\')">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.875rem;font-weight:700;color:#fff">'+(at?.nome||p.atletaNome||'—')+'</div>'
+        +'<div style="font-size:.7rem;color:var(--text2)">'+MESES[p.mes]+' '+p.ano+'</div>'
+        +(p.valor?'<div style="font-size:.825rem;color:var(--gold);font-weight:700">'+fmtMoney(p.valor)+'</div>':'')
+        +'<span class="badge bw" style="margin-top:.35rem">Pendente</span>'
+        +'</div></div>'
+        +'<button class="btn btn-s btn-blk" style="margin-top:.75rem;font-size:.825rem" onclick="confirmarPagamento(\''+pid+'\')">✓ Confirmar Pagamento</button>'
         +'</div>';
-    }).join('')
-    +'</div>';
+    }).join('');
+  }
+  if(confirmed.length>0){
+    html+='<div class="sec-hdr" style="margin-bottom:.625rem;'+(pending.length?'margin-top:1.25rem':'')+'"><span class="sec-t">✓ Confirmados</span></div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.625rem">'
+      +confirmed.map(([,p])=>{
+        const at=S.atletas[p.atletaId];
+        return '<div class="card" style="padding:.625rem">'
+          +'<img src="'+p.comprovante+'" class="thumb" onclick="viewImage(\''+p.comprovante+'\')">'
+          +'<div style="font-size:.75rem;font-weight:600;color:#fff;margin-top:.375rem">'+(at?.nome||p.atletaNome||'—')+'</div>'
+          +'<div style="font-size:.65rem;color:var(--text2)">'+MESES[p.mes]+' '+p.ano+'</div>'
+          +(p.valor?'<div style="font-size:.75rem;color:var(--gold);font-weight:700">'+fmtMoney(p.valor)+'</div>':'')
+          +'<span class="badge bs" style="margin-top:.3rem">✓ Pago</span>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }
+  return html;
 }
 
 function renderRelatorio(){
@@ -1087,6 +1121,94 @@ function copiarLink(){
     const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     showToast('✓ Link copiado!','ok');
   }
+}
+
+// ── PAGAR (public payment page) ────────────────────
+function renderPagar(){
+  const el=document.getElementById('cpag');
+  const at=pagarAtletaId?S.atletas[pagarAtletaId]:null;
+  if(!pagarAtletaId||!at){
+    el.innerHTML='<div class="fade-up"><div style="text-align:center;padding:2rem 0 1rem"><img src="'+AJF_LOGO+'" style="width:64px;height:64px;object-fit:contain"></div><div class="emp"><div class="emp-ic">❌</div><div class="emp-t">Link inválido</div><div class="emp-s">Solicite um novo link ao responsável da academia.</div></div></div>';
+    return;
+  }
+  const now=new Date();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  el.innerHTML='<div class="fade-up">'
+    +'<div style="text-align:center;padding:1.25rem 0 1rem">'
+    +'<img src="'+AJF_LOGO+'" style="width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 16px rgba(245,158,11,.5))">'
+    +'<div style="font-size:1.2rem;font-weight:900;color:#fff;margin-top:.5rem">AJF Academia</div>'
+    +'<div style="font-size:.62rem;color:var(--gold);font-weight:700;letter-spacing:.15em;text-transform:uppercase">Academia de Goleiros</div>'
+    +'</div>'
+    +'<div class="card" style="text-align:center;margin-bottom:1.25rem;padding:1.25rem">'
+    +'<div class="av av-'+(at.local==='penha'?'p':'gu')+'" style="width:56px;height:56px;font-size:1.2rem;margin:0 auto .5rem">'+initials(at.nome)+'</div>'
+    +'<div style="font-size:1.1rem;font-weight:800;color:#fff">'+at.nome+'</div>'
+    +'<span class="badge '+locBadge(at.local)+'" style="margin-top:.35rem">'+locLabel(at.local)+'</span>'
+    +'</div>'
+    +'<div class="pix-box">'
+    +'<div class="valor-lbl">Valor por sessão</div>'
+    +'<div class="valor-big">R$ 40,00</div>'
+    +'<div style="font-size:.72rem;color:var(--text2);margin-top:.25rem">'+MESES[mes]+' '+ano+'</div>'
+    +'<div class="div" style="margin:.875rem 0"></div>'
+    +'<div class="pix-label">Chave Pix</div>'
+    +'<div class="pix-key">ajfgoleiros</div>'
+    +'<button class="btn btn-g btn-blk" onclick="copiarChavePix()">📋 Copiar Chave Pix</button>'
+    +'</div>'
+    +'<div class="card" style="margin-bottom:2rem">'
+    +'<div style="font-size:.875rem;font-weight:700;color:#fff;margin-bottom:.75rem">📤 Enviar Comprovante</div>'
+    +'<div class="alert al-i" style="margin-bottom:.875rem;font-size:.75rem">Após realizar o pagamento via Pix, selecione o comprovante abaixo e envie para a academia confirmar.</div>'
+    +'<div id="pag-pub-prev-wrap" style="display:none;margin-bottom:.75rem"><img id="pag-pub-prev" src="" class="thumb"></div>'
+    +'<label class="upl-area" for="pag-pub-file"><div style="font-size:1.75rem">📷</div><div style="font-size:.825rem;font-weight:600;color:var(--text2);margin-top:.375rem">Toque para selecionar o comprovante</div><div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">JPG ou PNG</div></label>'
+    +'<input type="file" id="pag-pub-file" accept="image/*" style="display:none" onchange="previewPagPub(this)">'
+    +'<button class="btn btn-g btn-blk" style="margin-top:.875rem;padding:.75rem;font-size:.925rem" onclick="enviarComprovantePagamento()">✅ Enviar Comprovante</button>'
+    +'</div>'
+    +'</div>';
+}
+
+function copiarChavePix(){
+  const key='ajfgoleiros';
+  if(navigator.clipboard){navigator.clipboard.writeText(key).then(()=>showToast('✓ Chave Pix copiada!','ok'));}
+  else{const ta=document.createElement('textarea');ta.value=key;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Chave Pix copiada!','ok');}
+}
+
+function previewPagPub(input){
+  const f=input.files[0];if(!f)return;
+  compressImage(f,800,0.72).then(b64=>{
+    const prev=document.getElementById('pag-pub-prev');
+    prev.src=b64;prev._b64=b64;
+    document.getElementById('pag-pub-prev-wrap').style.display='block';
+  });
+}
+
+function enviarComprovantePagamento(){
+  const at=pagarAtletaId?S.atletas[pagarAtletaId]:null;
+  if(!at){showToast('Atleta não encontrado.','err');return;}
+  const prev=document.getElementById('pag-pub-prev');
+  const comp=prev?prev._b64:null;
+  if(!comp){showToast('Selecione o comprovante primeiro.','err');return;}
+  const now=new Date();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const key=uid();
+  const payload={atletaId:pagarAtletaId,atletaNome:at.nome,mes,ano,valor:40,pago:false,pendente:true,comprovante:comp,tipo:'mensalidade',ts:Date.now()};
+  db.ref('ajf/pagamentos/'+key).set(payload,function(err){
+    if(err){showToast('Erro ao enviar. Tente novamente.','err');return;}
+    showToast('✅ Comprovante enviado! Aguarde confirmação.','ok');
+    if(prev){prev._b64=null;prev.src='';document.getElementById('pag-pub-prev-wrap').style.display='none';}
+    const fi=document.getElementById('pag-pub-file');if(fi)fi.value='';
+  });
+}
+
+function confirmarPagamento(pid){
+  if(!confirm('Confirmar este pagamento?'))return;
+  db.ref('ajf/pagamentos/'+pid).update({pago:true,pendente:false,pagoEm:Date.now()},function(err){
+    if(err){showToast('Erro!','err');return;}
+    showToast('✓ Pagamento confirmado!','ok');
+  });
+}
+
+function copiarLinkPagamento(atletaId){
+  const url='https://adeiltongomes.github.io/ajf-goleiros/#pagar/'+atletaId;
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>showToast('✓ Link copiado!','ok'));}
+  else{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Link copiado!','ok');}
 }
 
 // ── TREINADORES ────────────────────────────────────
@@ -1470,8 +1592,11 @@ async function seedIfEmpty(){
     render(curPage);
     if(curPage==='loja')updateCartFab();
   });
-  const PUBLIC_PAGES=new Set(['inicio','presenca','avaliacao','loja','treinadores','confirmar']);
-  const hashPage=(location.hash||'').slice(1).toLowerCase();
+  const PUBLIC_PAGES=new Set(['inicio','presenca','avaliacao','loja','treinadores','confirmar','pagar']);
+  const hashRaw=(location.hash||'').slice(1);
+  const hashParts=hashRaw.split('/');
+  const hashPage=(hashParts[0]||'').toLowerCase();
+  if(hashPage==='pagar'&&hashParts[1])pagarAtletaId=hashParts[1];
   const startPage=PUBLIC_PAGES.has(hashPage)?hashPage:'inicio';
   goTo(startPage);
   setTimeout(hideSplash,1800);
