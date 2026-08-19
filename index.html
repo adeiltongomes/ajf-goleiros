@@ -1114,7 +1114,7 @@ function salvarAtleta(id){
   const local=document.getElementById('f-local').value;
   const email=(document.getElementById('f-email').value||'').trim();
   const payload={nome,telefone:tel,local,email,ativo:true};
-  const key=id||uid();
+  const key=(id&&id!=='undefined')?id:uid();
   db.ref('ajf/atletas/'+key).update(payload).then(()=>{
     showToast('✓ Atleta salvo!','ok');
     closeOv('ov-form');
@@ -1165,7 +1165,7 @@ function salvarSessao(id){
   const hora=document.getElementById('f-hora').value;
   const local=document.getElementById('f-local').value;
   const obs=(document.getElementById('f-obs').value||'').trim();
-  const key=id||uid();
+  const key=(id&&id!=='undefined')?id:uid();
   db.ref('ajf/sessoes/'+key).update({data,hora,local,obs}).then(()=>{
     showToast('✓ Sessão salva!','ok');
     closeOv('ov-form');
@@ -1212,7 +1212,7 @@ function salvarTreinador(id){
   const esp=(document.getElementById('f-esp').value||'').trim()||'Treinador';
   const local=document.getElementById('f-local').value;
   const tel=(document.getElementById('f-tel').value||'').trim();
-  const key=id||uid();
+  const key=(id&&id!=='undefined')?id:uid();
   db.ref('ajf/treinadores/'+key).update({nome,especialidade:esp,local,telefone:tel,ativo:true}).then(()=>{
     showToast('✓ Treinador salvo!','ok');
     closeOv('ov-form');
@@ -1262,7 +1262,7 @@ function salvarProduto(id){
   const preco=parseFloat(document.getElementById('f-preco').value)||0;
   const estoque=parseInt(document.getElementById('f-est').value)||0;
   const emoji=(document.getElementById('f-emoji').value||'📦').trim();
-  const key=id||uid();
+  const key=(id&&id!=='undefined')?id:uid();
   db.ref('ajf/produtos/'+key).update({nome,descricao,preco,estoque,emoji,ativo:true}).then(()=>{
     showToast('✓ Produto salvo!','ok');
     closeOv('ov-form');
