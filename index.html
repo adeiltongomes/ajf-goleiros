@@ -1090,31 +1090,58 @@ function renderComprovantes(){
 function renderRelatorio(){
   const now=new Date();
   const mes=now.getMonth()+1,ano=now.getFullYear();
-  let totalMes=0,totalPend=0,totalGeral=0;
-  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false);
-  const pagPorAtl={};
-  Object.entries(S.pagamentos).forEach(([,p])=>{
-    if(p.mes==mes&&p.ano==ano&&p.tipo==='mensalidade'){
-      if(p.pago){totalMes+=Number(p.valor||0);pagPorAtl[p.atletaId]=true;}
-    }
-    if(p.pago)totalGeral+=Number(p.valor||0);
+
+  // Usa os mesmos dados da aba Mensalidades (só quem confirmou presença)
+  const entradas=_buildTreinoPorAtl(mes,ano);
+  const totalPago=entradas.reduce((s,[,e])=>s+e.pago,0);
+  const totalPend=entradas.reduce((s,[,e])=>s+e.pendente,0);
+  const totalGeral=totalPago+totalPend;
+
+  // Por local — só atletas com sessões este mês
+  const penha=entradas.filter(([,e])=>e.local==='penha');
+  const guar=entradas.filter(([,e])=>e.local==='guarulhos');
+  const penhaP=penha.reduce((s,[,e])=>s+e.pago,0);
+  const gaurP=guar.reduce((s,[,e])=>s+e.pago,0);
+  const penhaD=penha.reduce((s,[,e])=>s+e.pendente,0);
+  const guarD=guar.reduce((s,[,e])=>s+e.pendente,0);
+
+  // Histórico geral (todos os meses, só tipo treino)
+  let historicoGeral=0;
+  Object.values(S.pagamentos).forEach(p=>{
+    if(p.tipo==='treino'&&(p.pago||p.comprovante))historicoGeral+=Number(p.valor||0);
   });
-  totalPend=ativos.filter(([id])=>!pagPorAtl[id]).length*Number(S.config?.mensalidadeValor||150);
-  const penhaAtls=ativos.filter(([,a])=>a.local==='penha').length;
-  const guarAtls=ativos.filter(([,a])=>a.local==='guarulhos').length;
+
+  const locRow=(avCls,label,qtd,pago,pend)=>
+    '<div style="display:flex;align-items:center;gap:.75rem;padding:.625rem 0;border-bottom:1px solid var(--border)">'
+    +'<div class="av '+avCls+'" style="width:34px;height:34px;font-size:.75rem;flex-shrink:0">'+label[0]+'</div>'
+    +'<div style="flex:1"><div style="font-size:.85rem;color:#fff;font-weight:600">'+label+'</div>'
+    +'<div style="font-size:.7rem;color:var(--text2)">'+qtd+' goleiro'+(qtd!==1?'s':'')+' com sessões</div></div>'
+    +'<div style="text-align:right">'
+    +(pago>0?'<div style="font-size:.8rem;font-weight:700;color:#22c55e">'+fmtMoney(pago)+' recebido</div>':'')
+    +(pend>0?'<div style="font-size:.75rem;color:#ef4444">'+fmtMoney(pend)+' pendente</div>':'')
+    +(pago===0&&pend===0?'<div style="font-size:.75rem;color:var(--text3)">—</div>':'')
+    +'</div></div>';
+
   return'<div>'
+    // Card principal — arrecadado no mês
     +'<div class="card card-gold" style="margin-bottom:.75rem">'
     +'<div style="font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;font-weight:600">Arrecadado — '+MESES[mes]+' '+ano+'</div>'
-    +'<div style="font-size:2rem;font-weight:800;color:var(--gold);margin-top:.25rem">'+fmtMoney(totalMes)+'</div>'
+    +'<div style="font-size:2rem;font-weight:800;color:var(--gold);margin-top:.25rem">'+fmtMoney(totalPago)+'</div>'
+    +(entradas.length>0?'<div style="font-size:.72rem;color:var(--text2);margin-top:.25rem">'+entradas.length+' goleiro'+(entradas.length!==1?'s':'')+' com sessões este mês</div>':'')
     +'</div>'
+    // Cards de resumo
     +'<div class="stat-grid" style="margin-bottom:1rem">'
-    +'<div class="stat-card"><div class="stat-ic">⚠️</div><div class="stat-v" style="color:var(--danger)">'+fmtMoney(totalPend)+'</div><div class="stat-l">Pendente</div></div>'
-    +'<div class="stat-card"><div class="stat-ic">💰</div><div class="stat-v" style="font-size:1.2rem">'+fmtMoney(totalGeral)+'</div><div class="stat-l">Total Geral</div></div>'
+    +(totalPend>0
+      ?'<div class="stat-card"><div class="stat-ic">⚠️</div><div class="stat-v" style="color:#ef4444;font-size:1.1rem">'+fmtMoney(totalPend)+'</div><div class="stat-l">Pendente</div></div>'
+      :'<div class="stat-card"><div class="stat-ic">✅</div><div class="stat-v" style="color:#22c55e;font-size:1.1rem">Em dia</div><div class="stat-l">Sem pendências</div></div>')
+    +'<div class="stat-card"><div class="stat-ic">💰</div><div class="stat-v" style="font-size:1.1rem">'+fmtMoney(historicoGeral)+'</div><div class="stat-l">Histórico total</div></div>'
     +'</div>'
-    +'<div class="card"><div class="sec-t" style="margin-bottom:.625rem">Por Local</div>'
-    +'<div class="ath-row"><div class="av av-p">P</div><div style="flex:1"><div style="font-size:.875rem;color:#fff">Penha</div><div style="font-size:.7rem;color:var(--text2)">'+penhaAtls+' atletas</div></div></div>'
-    +'<div class="ath-row"><div class="av av-gu">G</div><div style="flex:1"><div style="font-size:.875rem;color:#fff">Guarulhos</div><div style="font-size:.7rem;color:var(--text2)">'+guarAtls+' atletas</div></div></div>'
-    +'</div></div>';
+    // Por local
+    +'<div class="card"><div class="sec-t" style="margin-bottom:.5rem">Por Local — '+MESES[mes]+'</div>'
+    +locRow('av-p','Penha',penha.length,penhaP,penhaD)
+    +locRow('av-gu','Guarulhos',guar.length,gaurP,guarD)
+    +'</div>'
+    +'</div>';
 }
 
 function abrirPagamento(atletaId,nome,mes,ano){
