@@ -851,26 +851,49 @@ function _buildTreinoPorAtl(mes,ano){
     return key;
   };
 
-  // 1. Payment records — deduplica por sessaoId por atleta
-  const sessSeen={}; // key -> Set de sessaoIds já vistos
-  Object.entries(S.pagamentos).sort((a,b)=>b[1].ts-a[1].ts).forEach(([pid,p])=>{
+  // 1. Payment records — coleta tudo primeiro, depois deduplica
+  const rawPags={}; // key -> [{...p, id}]
+  Object.entries(S.pagamentos).forEach(([pid,p])=>{
     if(p.tipo!=='treino'||p.mes!=mes||p.ano!=ano)return;
     const atletaId=_resolveAtletaId(p.atletaId,p.atletaNome);
     const key=upsert(atletaId,p.atletaNome,'',p.local||'');
-    // Se tem sessaoId, ignora duplicatas do mesmo sessaoId para este atleta
-    if(p.sessaoId){
-      if(!sessSeen[key])sessSeen[key]=new Set();
-      if(sessSeen[key].has(p.sessaoId)){
-        // Remove o duplicado do Firebase silenciosamente
-        db.ref('ajf/pagamentos/'+pid).remove();
-        return;
-      }
-      sessSeen[key].add(p.sessaoId);
-    }
-    porKey[key].pags.push({...p,id:pid});
-    if(p.pago||p.comprovante)porKey[key].pago+=Number(p.valor||0);
-    else porKey[key].pendente+=Number(p.valor||0);
+    if(!rawPags[key])rawPags[key]=[];
+    rawPags[key].push({...p,id:pid});
     if(p.notificado&&p.notificadoEm>(porKey[key].notificadoEm||0)){porKey[key].notificado=true;porKey[key].notificadoEm=p.notificadoEm;}
+  });
+
+  // Deduplica: por sessaoId quando possível; sem sessaoId → mantém 1 (pago>comprovante>mais recente)
+  Object.entries(rawPags).forEach(([key,pags])=>{
+    const comSess={};
+    const semSess=[];
+    pags.forEach(p=>{
+      if(p.sessaoId){
+        if(!comSess[p.sessaoId]){comSess[p.sessaoId]=p;}
+        else{
+          // Mantém o melhor; apaga o pior no Firebase
+          const atual=comSess[p.sessaoId];
+          const melhor=(p.pago||p.comprovante)?p:((atual.pago||atual.comprovante)?atual:((p.ts||0)>(atual.ts||0)?p:atual));
+          const pior=melhor.id===p.id?atual:p;
+          db.ref('ajf/pagamentos/'+pior.id).remove();
+          comSess[p.sessaoId]=melhor;
+        }
+      } else {
+        semSess.push(p);
+      }
+    });
+    // Sem sessaoId: se houver mais de 1, colapsa num só
+    let semSessResult=[];
+    if(semSess.length>0){
+      semSess.sort((a,b)=>((b.pago||b.comprovante)?1:0)-((a.pago||a.comprovante)?1:0)||(b.ts||0)-(a.ts||0));
+      semSessResult=[semSess[0]];
+      semSess.slice(1).forEach(p=>db.ref('ajf/pagamentos/'+p.id).remove());
+    }
+    const final=[...Object.values(comSess),...semSessResult];
+    final.forEach(p=>{
+      porKey[key].pags.push(p);
+      if(p.pago||p.comprovante)porKey[key].pago+=Number(p.valor||0);
+      else porKey[key].pendente+=Number(p.valor||0);
+    });
   });
 
   // 2. Presences — add athletes who confirmed but have no payment record yet
