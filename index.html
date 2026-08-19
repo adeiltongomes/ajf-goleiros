@@ -151,6 +151,24 @@ textarea.finp{resize:vertical;min-height:80px;}
 .atleta-chip{display:flex;align-items:center;gap:.5rem;padding:.5rem .625rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s;}
 .atleta-chip:hover,.atleta-chip:active{border-color:var(--gold-border);background:var(--gold-dim);}
 .atleta-chip.sel{border-color:var(--gold-border);background:var(--gold-dim);}
+/* Confirmar page */
+.conf-sess{background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:1rem;}
+.conf-banner{background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(245,158,11,.04));padding:1.25rem;border-bottom:1px solid var(--border);}
+.conf-date-box{display:flex;align-items:center;gap:.875rem;}
+.conf-day-num{font-size:2.5rem;font-weight:900;color:#fff;line-height:1;}
+.conf-day-info{flex:1;}
+.conf-weekday{font-size:1rem;font-weight:700;color:#fff;}
+.conf-time{font-size:.875rem;color:var(--gold);font-weight:600;}
+.conf-body{padding:1rem;}
+.addr-card{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:14px;padding:.875rem;margin-bottom:1rem;}
+.addr-lbl{font-size:.6rem;color:var(--penha);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;}
+.addr-txt{font-size:.825rem;color:#f1f5f9;font-weight:500;line-height:1.55;}
+.maps-btn{display:inline-flex;align-items:center;gap:.4rem;margin-top:.625rem;padding:.4rem .875rem;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:8px;color:var(--penha);font-size:.75rem;font-weight:600;text-decoration:none;transition:all .15s;}
+.maps-btn:hover{background:rgba(59,130,246,.25);}
+.conf-count{font-size:.75rem;color:var(--text2);margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;}
+/* Share banner */
+.share-box{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.03));border:1.5px solid var(--gold-border);border-radius:16px;padding:1rem;margin-bottom:1.25rem;text-align:center;}
+
 </style>
 </head>
 <body>
@@ -181,6 +199,7 @@ textarea.finp{resize:vertical;min-height:80px;}
   <div id="page-loja" class="page"><div class="pg" id="cl"></div></div>
   <div id="page-treinadores" class="page"><div class="pg" id="ct"></div></div>
   <div id="page-admin" class="page"><div class="pg" id="cdm"></div></div>
+  <div id="page-confirmar" class="page"><div class="pg" id="cconf"></div></div>
 </main>
 
 <nav id="nav">
@@ -402,10 +421,13 @@ function viewImage(src){
 function goTo(page){
   if(page==='admin'&&!adminAuth){pinTarget='admin';openOv('ov-pin');document.getElementById('pin-inp').value='';document.getElementById('pin-err').style.display='none';return;}
   if(page==='financeiro'&&!adminAuth){pinTarget='financeiro';openOv('ov-pin');document.getElementById('pin-inp').value='';document.getElementById('pin-err').style.display='none';return;}
+  const pageEl=document.getElementById('page-'+page);
+  if(!pageEl)return;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
+  pageEl.classList.add('active');
   document.querySelectorAll('.nav-i').forEach(b=>{b.classList.toggle('active',b.dataset.p===page);});
   curPage=page;
+  location.hash=page;
   render(page);
 }
 
@@ -416,6 +438,7 @@ function render(page){
   else if(page==='financeiro')renderFinanceiro();
   else if(page==='loja')renderLoja();
   else if(page==='treinadores')renderTreinadores();
+  else if(page==='confirmar')renderConfirmar();
   else if(page==='admin')renderAdmin();
 }
 
@@ -992,6 +1015,80 @@ function finalizarPedido(){
   });
 }
 
+// ── CONFIRMAR (página pública) ─────────────────────
+function renderConfirmar(){
+  const el=document.getElementById('cconf');
+  const t=today();
+  const upSess=Object.entries(S.sessoes)
+    .filter(([,s])=>s.data>=t)
+    .sort((a,b)=>a[1].data.localeCompare(b[1].data))
+    .slice(0,6);
+  const endGuarulhos=S.config?.enderecoGuarulhos||'AFRESP – Associação dos Fiscais de Renda do Estado de São Paulo\nR. Maria García Utrila, 4048 – Cumbica, Guarulhos – SP';
+  const endPenha=S.config?.enderecoPenha||'Penha – São Paulo, SP';
+  const siteUrl='https://adeiltongomes.github.io/ajf-goleiros/#confirmar';
+
+  const sessHtml=upSess.length===0
+    ?'<div class="emp"><div class="emp-ic">📋</div><div class="emp-t">Nenhuma sessão agendada</div><div class="emp-s">Aguardando o administrador.</div></div>'
+    :upSess.map(([id,s])=>{
+      const d=new Date(s.data+'T12:00:00');
+      const end=s.local==='guarulhos'?endGuarulhos:endPenha;
+      const endLine=end.replace(/\n/g,'<br>');
+      const mapsQ=encodeURIComponent(end.replace(/\n/g,' '));
+      const conf=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
+      const locCls=s.local==='penha'?'bp':'bg_';
+      const past=s.data<t;
+      return '<div class="conf-sess">'
+        +'<div class="conf-banner">'
+        +'<div class="conf-date-box">'
+        +'<div style="text-align:center;background:rgba(245,158,11,.15);border:1.5px solid rgba(245,158,11,.35);border-radius:14px;padding:.625rem .75rem;min-width:56px">'
+        +'<div class="conf-day-num">'+d.getDate()+'</div>'
+        +'<div style="font-size:.6rem;color:var(--gold);font-weight:700;text-transform:uppercase">'+MONS[d.getMonth()]+'</div>'
+        +'</div>'
+        +'<div class="conf-day-info">'
+        +'<div class="conf-weekday">'+DIAS[d.getDay()]+'</div>'
+        +'<div class="conf-time">🕐 '+( s.hora||'—')+'</div>'
+        +'<span class="badge '+locCls+'" style="margin-top:.3rem">'+locLabel(s.local)+'</span>'
+        +'</div></div></div>'
+        +'<div class="conf-body">'
+        +'<div class="addr-card">'
+        +'<div class="addr-lbl">📍 Local do Treino</div>'
+        +'<div class="addr-txt">'+endLine+'</div>'
+        +'<a href="https://maps.google.com/?q='+mapsQ+'" target="_blank" class="maps-btn">🗺️ Abrir no Google Maps</a>'
+        +'</div>'
+        +'<div class="conf-count"><span style="color:var(--success)">●</span> '+conf+' goleiro'+(conf!==1?'s':'')+' confirmado'+(conf!==1?'s':'')+' nesta sessão</div>'
+        +(past
+          ?'<div class="alert al-w">🔒 Esta sessão já aconteceu.</div>'
+          :'<button class="btn btn-g btn-blk" style="font-size:1rem;padding:.8rem" onclick="abrirConfirmarPresenca(\''+id+'\')">🥅 Confirmar Minha Presença</button>'
+        )
+        +'</div></div>';
+    }).join('');
+
+  el.innerHTML='<div class="fade-up">'
+    +'<div style="text-align:center;padding:1.25rem 0 1rem">'
+    +'<img src="'+AJF_LOGO+'" style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 20px rgba(245,158,11,.5))">'
+    +'<div style="font-size:1.35rem;font-weight:900;color:#fff;margin-top:.5rem">AJF Academia</div>'
+    +'<div style="font-size:.62rem;color:var(--gold);font-weight:700;letter-spacing:.15em;text-transform:uppercase">Academia de Goleiros</div>'
+    +'</div>'
+    +'<div class="share-box">'
+    +'<div style="font-size:.65rem;color:var(--gold);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem">🔗 Link para compartilhar</div>'
+    +'<div style="font-size:.72rem;color:var(--text2);word-break:break-all;margin-bottom:.625rem">'+siteUrl+'</div>'
+    +'<button class="btn btn-g btn-blk" onclick="copiarLink()">📋 Copiar Link</button>'
+    +'</div>'
+    +'<div class="sec-hdr"><span class="sec-t">Próximas Sessões</span></div>'
+    +sessHtml
+    +'</div>';
+}
+
+function copiarLink(){
+  const url='https://adeiltongomes.github.io/ajf-goleiros/#confirmar';
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(()=>showToast('✓ Link copiado!','ok'));
+  } else {
+    const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    showToast('✓ Link copiado!','ok');
+  }
+}
+
 // ── TREINADORES ────────────────────────────────────
 let trSel=null;
 function renderTreinadores(){
@@ -1297,11 +1394,21 @@ function updatePedidoStatus(id,status){
 
 function adminConfig(){
   const cfg=S.config||{};
-  return'<div class="card" style="margin-bottom:1rem"><div class="sec-t" style="margin-bottom:.875rem">Configurações Gerais</div>'
+  const siteUrl='https://adeiltongomes.github.io/ajf-goleiros/#confirmar';
+  return'<div class="card" style="margin-bottom:1rem">'
+    +'<div class="sec-t" style="margin-bottom:.875rem">🔗 Link Público de Presença</div>'
+    +'<div style="font-size:.75rem;color:var(--text2);word-break:break-all;margin-bottom:.625rem">'+siteUrl+'</div>'
+    +'<button class="btn btn-g btn-blk" onclick="copiarLink()">📋 Copiar Link</button>'
+    +'</div>'
+    +'<div class="card" style="margin-bottom:1rem"><div class="sec-t" style="margin-bottom:.875rem">⚙️ Configurações Gerais</div>'
     +'<div class="fgrp"><label class="flbl">PIN do Admin (atual: oculto)</label>'
     +'<input class="finp" id="cfg-pin" type="password" placeholder="Novo PIN" maxlength="20"></div>'
     +'<div class="fgrp"><label class="flbl">Valor padrão mensalidade (R$)</label>'
     +'<input class="finp" id="cfg-mens" type="number" value="'+(cfg.mensalidadeValor||150)+'" min="0" step="0.01"></div>'
+    +'<div class="fgrp"><label class="flbl">📍 Endereço — Guarulhos</label>'
+    +'<textarea class="finp" id="cfg-end-g" rows="3">'+(cfg.enderecoGuarulhos||'AFRESP – Associação dos Fiscais de Renda do Estado de São Paulo\nR. Maria García Utrila, 4048 – Cumbica, Guarulhos – SP')+'</textarea></div>'
+    +'<div class="fgrp"><label class="flbl">📍 Endereço — Penha</label>'
+    +'<textarea class="finp" id="cfg-end-p" rows="3">'+(cfg.enderecoPenha||'')+'</textarea></div>'
     +'<button class="btn btn-g btn-blk" onclick="salvarConfig()">💾 Salvar Configurações</button>'
     +'</div>'
     +'<div class="card"><div class="sec-t" style="margin-bottom:.5rem">Informações</div>'
@@ -1316,8 +1423,12 @@ function adminConfig(){
 function salvarConfig(){
   const pin=(document.getElementById('cfg-pin')?.value||'').trim();
   const mens=parseFloat(document.getElementById('cfg-mens')?.value)||150;
+  const endG=(document.getElementById('cfg-end-g')?.value||'').trim();
+  const endP=(document.getElementById('cfg-end-p')?.value||'').trim();
   const update={mensalidadeValor:mens};
   if(pin)update.adminPin=pin;
+  if(endG)update.enderecoGuarulhos=endG;
+  if(endP)update.enderecoPenha=endP;
   db.ref('ajf/config').update(update).then(()=>showToast('✓ Configurações salvas!','ok'));
 }
 
@@ -1359,7 +1470,10 @@ async function seedIfEmpty(){
     render(curPage);
     if(curPage==='loja')updateCartFab();
   });
-  goTo('inicio');
+  const PUBLIC_PAGES=new Set(['inicio','presenca','avaliacao','loja','treinadores','confirmar']);
+  const hashPage=(location.hash||'').slice(1).toLowerCase();
+  const startPage=PUBLIC_PAGES.has(hashPage)?hashPage:'inicio';
+  goTo(startPage);
   setTimeout(hideSplash,1800);
 })();
 </script>
