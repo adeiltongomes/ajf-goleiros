@@ -895,11 +895,9 @@ function _mkTreinoRow([key,e]){
     +(!atletaId?'&nbsp;<button class="badge bn" style="cursor:pointer;border:none;text-decoration:underline;text-underline-offset:2px" onclick="cadastrarDaPresenca(\''+nomeEsc+'\')" title="Clique para cadastrar">+ Cadastrar</button>':'')
     +'</div></div>'
     +'<div style="display:flex;gap:.35rem">'
-    +(e.notificado
-      ?'<span style="font-size:.65rem;color:var(--success);white-space:nowrap">📲 Enviado<br>'+new Date(e.notificadoEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>'
-      :'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+(e.tel||'').replace(/\D/g,'')+'\','+(primPend?'\''+primPend.id+'\'':'null')+')">📲 Cobrar</button>'
-    )
-    +(e.fromPresenca&&!e.notificado?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
+    +(e.notificado?'<span style="font-size:.65rem;color:var(--success);white-space:nowrap">📲 Enviado<br>'+new Date(e.notificadoEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>':'')
+    +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+(e.tel||'').replace(/\D/g,'')+'\','+(primPend?'\''+primPend.id+'\'':'null')+')">📲 Cobrar</button>'
+    +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
     +(!e.fromPresenca&&primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
     +'</div></div>';
 }
@@ -1337,21 +1335,39 @@ function enviarComprovantePagamento(){
   if(!comp){showToast('Selecione o comprovante primeiro.','err');return;}
   const now=new Date();
   const mes=now.getMonth()+1,ano=now.getFullYear();
-  const key=uid();
-  const payload={atletaId:pagarAtletaId,atletaNome:at.nome,mes,ano,valor:40,pago:false,pendente:true,comprovante:comp,tipo:'mensalidade',ts:Date.now()};
-  db.ref('ajf/pagamentos/'+key).set(payload,function(err){
+  const existente=Object.entries(S.pagamentos).find(([,p])=>{
+    return p.tipo==='treino'&&p.mes==mes&&p.ano==ano&&p.atletaId===pagarAtletaId;
+  });
+  const onDone=function(err){
     if(err){showToast('Erro ao enviar. Tente novamente.','err');return;}
     showToast('✅ Comprovante enviado! Aguarde confirmação.','ok');
     if(prev){prev._b64=null;prev.src='';document.getElementById('pag-pub-prev-wrap').style.display='none';}
     const fi=document.getElementById('pag-pub-file');if(fi)fi.value='';
-  });
+  };
+  if(existente){
+    db.ref('ajf/pagamentos/'+existente[0]).update({comprovante:comp,pendente:true,pago:false,ts:Date.now()},onDone);
+  } else {
+    const key=uid();
+    const payload={atletaId:pagarAtletaId,atletaNome:at.nome,mes,ano,valor:40,pago:false,pendente:true,comprovante:comp,tipo:'treino',ts:Date.now()};
+    db.ref('ajf/pagamentos/'+key).set(payload,onDone);
+  }
 }
 
 function confirmarPagamento(pid){
   if(!confirm('Confirmar este pagamento?'))return;
-  db.ref('ajf/pagamentos/'+pid).update({pago:true,pendente:false,pagoEm:Date.now()},function(err){
+  const pRef=S.pagamentos[pid];
+  const pagoEm=Date.now();
+  db.ref('ajf/pagamentos/'+pid).update({pago:true,pendente:false,pagoEm},function(err){
     if(err){showToast('Erro!','err');return;}
     showToast('✓ Pagamento confirmado!','ok');
+    if(pRef){
+      const {atletaId,mes,ano}=pRef;
+      Object.entries(S.pagamentos).forEach(([k,p])=>{
+        if(k===pid||p.pago||p.tipo!=='treino')return;
+        if(p.mes!=mes||p.ano!=ano)return;
+        if(atletaId&&p.atletaId===atletaId)db.ref('ajf/pagamentos/'+k).update({pago:true,pendente:false,pagoEm});
+      });
+    }
   });
 }
 
