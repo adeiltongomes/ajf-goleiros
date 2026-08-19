@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0b10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AJF Goleiros">
+<title>AJF Academia de Goleiros</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0b10;--bg2:#0f1117;--bg3:#161b22;
+  --card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);
+  --gold:#f59e0b;--gold-dim:rgba(245,158,11,0.12);--gold-border:rgba(245,158,11,0.35);
+  --penha:#3b82f6;--penha-dim:rgba(59,130,246,0.12);--penha-b:rgba(59,130,246,0.35);
+  --guarulhos:#a78bfa;--guarulhos-dim:rgba(167,139,250,0.12);--guarulhos-b:rgba(167,139,250,0.35);
+  --success:#22c55e;--danger:#ef4444;--warn:#f59e0b;
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#475569;
+}
+*{font-family:'Inter',system-ui,sans-serif;box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;}
+.page{display:none;}.page.active{display:block;}
+#hdr{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,11,16,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top,0) 1rem 0;}
+.hdr-inner{display:flex;align-items:center;justify-content:space-between;height:58px;}
+.logo-wrap{display:flex;align-items:center;gap:0.625rem;}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(245,158,11,0.05));border:1.5px solid var(--gold-border);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.logo-t{font-size:1rem;font-weight:900;color:#fff;letter-spacing:-0.01em;line-height:1;}
+.logo-s{font-size:0.6rem;color:var(--gold);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;}
+.hdr-btn{width:36px;height:36px;border-radius:10px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .15s;color:var(--text2);}
+.hdr-btn:hover{background:var(--gold-dim);border-color:var(--gold-border);color:var(--gold);}
+#nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,11,16,0.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:0.375rem 0 env(safe-area-inset-bottom,0.375rem);display:flex;overflow-x:auto;}
+#nav::-webkit-scrollbar{display:none;}
+.nav-i{flex:1;min-width:56px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:.35rem .2rem;cursor:pointer;border-radius:10px;margin:0 2px;transition:all .18s;position:relative;color:var(--text3);border:none;background:none;}
+.nav-i .ni{font-size:19px;transition:transform .18s;}
+.nav-i .nl{font-size:0.58rem;font-weight:600;letter-spacing:.03em;}
+.nav-i.active{color:var(--gold);}
+.nav-i.active .ni{transform:translateY(-2px) scale(1.15);}
+.nav-i.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:22px;height:2.5px;background:var(--gold);border-radius:0 0 4px 4px;box-shadow:0 0 10px rgba(245,158,11,0.8);}
+#content{padding-top:calc(58px + env(safe-area-inset-top,0px));padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));min-height:100dvh;}
+.pg{padding:1rem;max-width:620px;margin:0 auto;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1rem;}
+.card-gold{border-color:var(--gold-border);background:var(--gold-dim);}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.625rem;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:.875rem;}
+.stat-v{font-size:1.8rem;font-weight:800;color:#fff;line-height:1;}
+.stat-l{font-size:.65rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:.2rem;}
+.stat-ic{font-size:1.3rem;margin-bottom:.25rem;}
+.badge{display:inline-flex;align-items:center;gap:.2rem;padding:.18rem .55rem;border-radius:9999px;font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.bp{background:var(--penha-dim);color:var(--penha);border:1px solid var(--penha-b);}
+.bg_{background:var(--guarulhos-dim);color:var(--guarulhos);border:1px solid var(--guarulhos-b);}
+.bo{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);}
+.bs{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
+.bd{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3);}
+.bw{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.3);}
+.bn{background:rgba(100,116,139,.1);color:#94a3b8;border:1px solid rgba(100,116,139,.25);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.6rem 1.2rem;border-radius:10px;font-size:.875rem;font-weight:600;cursor:pointer;transition:all .15s;border:none;letter-spacing:.01em;}
+.btn-g{background:var(--gold);color:#0a0b10;}.btn-g:hover{background:#d97706;}
+.btn-o{background:transparent;border:1.5px solid var(--border);color:var(--text2);}.btn-o:hover{border-color:var(--gold-border);color:var(--gold);}
+.btn-d{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25);}.btn-d:hover{background:rgba(239,68,68,.22);}
+.btn-s{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);}.btn-s:hover{background:rgba(34,197,94,.22);}
+.btn-sm{padding:.35rem .8rem;font-size:.75rem;border-radius:8px;}
+.btn-blk{width:100%;}
+.fgrp{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.875rem;}
+.flbl{font-size:.72rem;color:var(--text2);font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+.finp{background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:.6rem .875rem;color:var(--text);font-size:.875rem;outline:none;transition:border-color .15s;width:100%;}
+.finp:focus{border-color:var(--gold-border);}
+.finp::placeholder{color:var(--text3);}
+select.finp{cursor:pointer;}
+textarea.finp{resize:vertical;min-height:80px;}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
+.sec-t{font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;}
+.div{height:1px;background:var(--border);margin:1rem 0;}
+.av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.875rem;font-weight:700;flex-shrink:0;}
+.av-g{background:var(--gold-dim);color:var(--gold);border:1.5px solid var(--gold-border);}
+.av-p{background:var(--penha-dim);color:var(--penha);border:1.5px solid var(--penha-b);}
+.av-gu{background:var(--guarulhos-dim);color:var(--guarulhos);border:1.5px solid var(--guarulhos-b);}
+#toast{position:fixed;top:calc(70px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-110px);background:#1e293b;border:1px solid var(--border);color:#fff;padding:.6rem 1.2rem;border-radius:12px;font-size:.825rem;font-weight:500;z-index:9999;transition:transform .3s ease;white-space:nowrap;max-width:92vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4);}
+#toast.show{transform:translateX(-50%) translateY(0);}
+.ov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.ov.open{opacity:1;pointer-events:all;}
+.sheet{background:var(--bg2);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:620px;max-height:90dvh;overflow-y:auto;padding:1.25rem;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.ov.open .sheet{transform:translateY(0);}
+.sh-handle{width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto .875rem;}
+.sh-t{font-size:1rem;font-weight:700;color:#fff;margin-bottom:1rem;}
+.tabs{display:flex;gap:.25rem;background:var(--bg2);border-radius:12px;padding:.25rem;margin-bottom:1rem;}
+.tab{flex:1;padding:.45rem;border-radius:9px;font-size:.72rem;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text3);transition:all .15s;}
+.tab.active{background:var(--card);color:var(--gold);border:1px solid var(--gold-border);}
+.adm-tabs{display:flex;overflow-x:auto;gap:.25rem;background:var(--bg2);border-radius:12px;padding:.25rem;margin-bottom:1rem;}
+.adm-tabs::-webkit-scrollbar{display:none;}
+.adm-tab{flex-shrink:0;padding:.45rem .875rem;border-radius:9px;font-size:.72rem;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text3);transition:all .15s;white-space:nowrap;}
+.adm-tab.active{background:var(--card);color:var(--gold);border:1px solid var(--gold-border);}
+.sess-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:.875rem;display:flex;align-items:center;gap:.75rem;cursor:pointer;transition:all .18s;margin-bottom:.5rem;}
+.sess-card:hover{border-color:var(--gold-border);}
+.sess-day{font-size:1.5rem;font-weight:800;color:#fff;line-height:1;}
+.sess-mon{font-size:.6rem;color:var(--text2);font-weight:600;text-transform:uppercase;}
+.ev-row{display:flex;align-items:center;gap:.625rem;margin-bottom:.75rem;}
+.ev-lbl{font-size:.72rem;color:var(--text2);width:105px;flex-shrink:0;font-weight:500;}
+.ev-btns{display:flex;gap:2px;flex:1;}
+.ev-btn{flex:1;height:26px;border-radius:5px;border:1.5px solid var(--border);background:var(--bg2);color:var(--text3);font-size:.65rem;font-weight:700;cursor:pointer;transition:all .1s;}
+.ev-btn:hover{border-color:var(--gold-border);color:var(--gold);}
+.ev-btn.sel{background:var(--gold);border-color:var(--gold);color:#000;transform:scale(1.08);}
+.ev-sc{width:26px;text-align:right;font-size:.875rem;font-weight:700;color:var(--gold);flex-shrink:0;}
+.prod-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:.875rem;display:flex;flex-direction:column;gap:.375rem;}
+.qa-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.625rem;margin-bottom:1.25rem;}
+.qa{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1rem;text-align:center;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:.3rem;}
+.qa:hover{border-color:var(--gold-border);transform:translateY(-1px);}
+.qa-ic{font-size:1.75rem;}
+.qa-lb{font-size:.72rem;font-weight:600;color:var(--text2);}
+.alert{border-radius:12px;padding:.75rem 1rem;font-size:.8rem;font-weight:500;line-height:1.4;}
+.al-i{background:rgba(59,130,246,.1);color:#93c5fd;border:1px solid rgba(59,130,246,.2);}
+.al-w{background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.2);}
+.al-s{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.2);}
+.al-d{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.2);}
+.prog{height:6px;background:var(--border);border-radius:99px;overflow:hidden;}
+.prog-f{height:100%;border-radius:99px;background:var(--gold);transition:width .5s;}
+#cart-fab{position:fixed;bottom:calc(76px + env(safe-area-inset-bottom,0px));right:1rem;z-index:90;width:54px;height:54px;border-radius:16px;background:var(--gold);color:#0a0b10;font-size:1.25rem;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(245,158,11,.45);font-weight:700;transition:all .2s;flex-direction:column;gap:1px;}
+#cart-fab.vis{display:flex;}
+#cart-fab-ct{font-size:.65rem;font-weight:800;}
+.score-cir{width:58px;height:58px;border-radius:50%;border:2.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:800;color:var(--gold);background:var(--gold-dim);flex-shrink:0;}
+.emp{text-align:center;padding:3rem 1rem;}
+.emp-ic{font-size:3rem;margin-bottom:.75rem;}
+.emp-t{font-size:.875rem;font-weight:600;color:var(--text2);margin-bottom:.35rem;}
+.emp-s{font-size:.75rem;color:var(--text3);}
+.ath-row{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border);}
+.ath-row:last-child{border-bottom:none;}
+.upl-area{border:2px dashed var(--border);border-radius:12px;padding:1.5rem;text-align:center;cursor:pointer;transition:all .2s;}
+.upl-area:hover{border-color:var(--gold-border);background:var(--gold-dim);}
+.thumb{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;}
+.rank-row{display:flex;align-items:center;gap:.625rem;padding:.6rem .75rem;background:var(--bg2);border-radius:12px;margin-bottom:.375rem;}
+.fin-row{display:flex;align-items:center;gap:.625rem;padding:.75rem;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:.375rem;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .25s ease forwards;}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<header id="hdr">
+  <div class="hdr-inner">
+    <div class="logo-wrap">
+      <div class="logo-icon">🥅</div>
+      <div>
+        <div class="logo-t">AJF Academia</div>
+        <div class="logo-s">Academia de Goleiros</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.4rem">
+      <button class="hdr-btn" onclick="goTo('treinadores')" title="Treinadores">👥</button>
+      <button class="hdr-btn" onclick="goTo('admin')" title="Admin">⚙️</button>
+    </div>
+  </div>
+</header>
+
+<main id="content">
+  <div id="page-inicio" class="page active"><div class="pg" id="ci"></div></div>
+  <div id="page-presenca" class="page"><div class="pg" id="cp"></div></div>
+  <div id="page-avaliacao" class="page"><div class="pg" id="ca"></div></div>
+  <div id="page-financeiro" class="page"><div class="pg" id="cf"></div></div>
+  <div id="page-loja" class="page"><div class="pg" id="cl"></div></div>
+  <div id="page-treinadores" class="page"><div class="pg" id="ct"></div></div>
+  <div id="page-admin" class="page"><div class="pg" id="cdm"></div></div>
+</main>
+
+<nav id="nav">
+  <button class="nav-i active" data-p="inicio" onclick="goTo('inicio')"><span class="ni">🏠</span><span class="nl">Início</span></button>
+  <button class="nav-i" data-p="presenca" onclick="goTo('presenca')"><span class="ni">📋</span><span class="nl">Presença</span></button>
+  <button class="nav-i" data-p="avaliacao" onclick="goTo('avaliacao')"><span class="ni">⭐</span><span class="nl">Avaliação</span></button>
+  <button class="nav-i" data-p="financeiro" onclick="goTo('financeiro')"><span class="ni">💰</span><span class="nl">Financeiro</span></button>
+  <button class="nav-i" data-p="loja" onclick="goTo('loja')"><span class="ni">🛒</span><span class="nl">Loja</span></button>
+</nav>
+
+<div id="cart-fab" onclick="openCart()">🛒<span id="cart-fab-ct">0</span></div>
+
+<!-- Admin PIN modal -->
+<div class="ov" id="ov-pin">
+  <div class="sheet" style="max-height:60dvh">
+    <div class="sh-handle"></div>
+    <div class="sh-t">🔐 Acesso Administrativo</div>
+    <div class="fgrp">
+      <label class="flbl">PIN do Administrador</label>
+      <input class="finp" id="pin-inp" type="password" placeholder="Digite o PIN" maxlength="20" onkeydown="if(event.key==='Enter')checkPin()">
+    </div>
+    <div id="pin-err" style="color:#ef4444;font-size:.75rem;margin-bottom:.75rem;display:none">PIN incorreto. Tente novamente.</div>
+    <button class="btn btn-g btn-blk" onclick="checkPin()">Entrar</button>
+    <button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv('ov-pin')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Confirm presence modal -->
+<div class="ov" id="ov-presenca">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-t" id="ov-presenca-t">Confirmar Presença</div>
+    <div class="fgrp">
+      <label class="flbl">Seu nome</label>
+      <input class="finp" id="pres-nome" type="text" placeholder="Digite seu nome completo" maxlength="60">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Telefone (opcional)</label>
+      <input class="finp" id="pres-tel" type="tel" placeholder="(11) 99999-9999" maxlength="20">
+    </div>
+    <button class="btn btn-g btn-blk" onclick="confirmarPresenca()">✓ Confirmar Presença</button>
+    <button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv('ov-presenca')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Cart modal -->
+<div class="ov" id="ov-cart">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-t">🛒 Carrinho</div>
+    <div id="cart-items"></div>
+    <div class="div"></div>
+    <div id="cart-total" style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:1rem"></div>
+    <div class="fgrp">
+      <label class="flbl">Seu nome</label>
+      <input class="finp" id="cart-nome" type="text" placeholder="Nome completo" maxlength="60">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Forma de pagamento</label>
+      <select class="finp" id="cart-pgto">
+        <option value="pix">Pix</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="cartao">Cartão</option>
+      </select>
+    </div>
+    <div id="cart-pix-area" style="margin-bottom:.875rem">
+      <div class="alert al-i" style="margin-bottom:.5rem">📱 Chave Pix: <strong>ajfacademia@pix.com</strong></div>
+      <label class="flbl" style="margin-bottom:.35rem;display:block">Comprovante Pix</label>
+      <input type="file" id="cart-comp" accept="image/*" style="display:none" onchange="previewFile('cart-comp','cart-comp-prev')">
+      <div class="upl-area" onclick="document.getElementById('cart-comp').click()">
+        <div style="font-size:1.5rem;margin-bottom:.35rem">📄</div>
+        <div style="font-size:.75rem;color:var(--text2)">Toque para anexar comprovante</div>
+      </div>
+      <img id="cart-comp-prev" style="display:none;width:100%;border-radius:10px;margin-top:.5rem;object-fit:cover;max-height:180px">
+    </div>
+    <button class="btn btn-g btn-blk" onclick="finalizarPedido()">Finalizar Pedido</button>
+    <button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv('ov-cart')">Fechar</button>
+  </div>
+</div>
+
+<!-- Payment modal -->
+<div class="ov" id="ov-pag">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-t" id="ov-pag-t">Registrar Pagamento</div>
+    <div class="fgrp">
+      <label class="flbl">Valor (R$)</label>
+      <input class="finp" id="pag-val" type="number" placeholder="150.00" min="0" step="0.01">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Observações</label>
+      <input class="finp" id="pag-obs" type="text" placeholder="Opcional" maxlength="100">
+    </div>
+    <div class="fgrp">
+      <label class="flbl">Comprovante (opcional)</label>
+      <input type="file" id="pag-comp" accept="image/*" style="display:none" onchange="previewFile('pag-comp','pag-comp-prev')">
+      <div class="upl-area" onclick="document.getElementById('pag-comp').click()">
+        <div style="font-size:1.5rem;margin-bottom:.35rem">📄</div>
+        <div style="font-size:.75rem;color:var(--text2)">Toque para anexar comprovante</div>
+      </div>
+      <img id="pag-comp-prev" style="display:none;width:100%;border-radius:10px;margin-top:.5rem;object-fit:cover;max-height:180px">
+    </div>
+    <button class="btn btn-g btn-blk" onclick="salvarPagamento()">💾 Salvar Pagamento</button>
+    <button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv('ov-pag')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Image viewer -->
+<div class="ov" id="ov-img" onclick="closeOv('ov-img')">
+  <div style="padding:1rem;width:100%;max-width:620px">
+    <img id="ov-img-el" style="width:100%;border-radius:16px;max-height:80dvh;object-fit:contain">
+  </div>
+</div>
+
+<!-- Generic form modal -->
+<div class="ov" id="ov-form">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-t" id="ov-form-t"></div>
+    <div id="ov-form-body"></div>
+  </div>
+</div>
+
+<!-- Evaluation modal -->
+<div class="ov" id="ov-eval">
+  <div class="sheet" style="max-height:95dvh">
+    <div class="sh-handle"></div>
+    <div class="sh-t" id="ov-eval-t">Avaliação de Goleiro</div>
+    <div id="ov-eval-body"></div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig={
+  apiKey:"AIzaSyD940HnY1xp3TShMY0iJviI2XGxHa471lk",
+  authDomain:"afresppeladaecompromisso.firebaseapp.com",
+  databaseURL:"https://afresppeladaecompromisso-default-rtdb.firebaseio.com",
+  projectId:"afresppeladaecompromisso",
+  storageBucket:"afresppeladaecompromisso.firebasestorage.app",
+  messagingSenderId:"592996953063",
+  appId:"1:592996953063:web:fe6e640b37725a3a1b6b42"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// ── State ──────────────────────────────────────────
+let S={atletas:{},sessoes:{},presencas:{},avaliacoes:{},pagamentos:{},pedidos:{},produtos:{},treinadores:{},config:{}};
+let curPage='inicio', adminAuth=false, pinTarget='', finTab='mensalidades', admTab='atletas';
+let cart={}, activeSessId=null, activePagAtleta=null, activePagMes=null, activePagAno=null;
+let evalSessId=null, evalAtletaId=null, evalData={};
+const EVAL_CRIT=[
+  {k:'reflexos',l:'🙌 Reflexos'},
+  {k:'posicionamento',l:'📍 Posicionamento'},
+  {k:'saidas',l:'🏃 Saídas'},
+  {k:'distribuicao',l:'⚽ Distribuição'},
+  {k:'pes',l:'🦶 Jogo c/ Pés'},
+  {k:'fisico',l:'💪 Físico'},
+  {k:'lideranca',l:'👑 Liderança'},
+  {k:'comunicacao',l:'📢 Comunicação'}
+];
+const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+// ── Utilities ──────────────────────────────────────
+function uid(){return db.ref('ajf/tmp').push().key;}
+function today(){return new Date().toISOString().split('T')[0];}
+function fmt(iso){const d=new Date(iso+'T12:00:00');return d.getDate()+' '+MONS[d.getMonth()]+' '+d.getFullYear();}
+function fmtMoney(v){return'R$ '+Number(v||0).toFixed(2).replace('.',',');}
+function initials(n){return n?n.trim().split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase():'?';}
+function locLabel(l){return l==='penha'?'Penha':'Guarulhos';}
+function locBadge(l){return l==='penha'?'bp':'bg_';}
+function locAv(l){return l==='penha'?'av-p':'av-gu';}
+
+let toastT;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=type==='ok'?'#14532d':type==='err'?'#450a0a':'#1e293b';
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+function openOv(id){document.getElementById(id).classList.add('open');}
+function closeOv(id){document.getElementById(id).classList.remove('open');}
+
+function compressImage(file,maxW=900,q=0.72){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+        const c=document.createElement('canvas');
+        c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        res(c.toDataURL('image/jpeg',q));
+      };
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+function previewFile(inputId,prevId){
+  const f=document.getElementById(inputId).files[0];
+  if(!f)return;
+  compressImage(f).then(b64=>{
+    const el=document.getElementById(prevId);
+    el.src=b64;
+    el.style.display='block';
+    el._b64=b64;
+  });
+}
+
+function viewImage(src){
+  document.getElementById('ov-img-el').src=src;
+  openOv('ov-img');
+}
+
+// ── Navigation ─────────────────────────────────────
+function goTo(page){
+  if(page==='admin'&&!adminAuth){pinTarget='admin';openOv('ov-pin');document.getElementById('pin-inp').value='';document.getElementById('pin-err').style.display='none';return;}
+  if(page==='financeiro'&&!adminAuth){pinTarget='financeiro';openOv('ov-pin');document.getElementById('pin-inp').value='';document.getElementById('pin-err').style.display='none';return;}
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-i').forEach(b=>{b.classList.toggle('active',b.dataset.p===page);});
+  curPage=page;
+  render(page);
+}
+
+function render(page){
+  if(page==='inicio')renderInicio();
+  else if(page==='presenca')renderPresenca();
+  else if(page==='avaliacao')renderAvaliacao();
+  else if(page==='financeiro')renderFinanceiro();
+  else if(page==='loja')renderLoja();
+  else if(page==='treinadores')renderTreinadores();
+  else if(page==='admin')renderAdmin();
+}
+
+// ── PIN ───────────────────────────────────────────
+function checkPin(){
+  const pin=(document.getElementById('pin-inp').value||'').trim();
+  const cfg=S.config||{};
+  const correct=cfg.adminPin||'ajf2024';
+  if(pin===correct){
+    adminAuth=true;
+    closeOv('ov-pin');
+    goTo(pinTarget||'admin');
+  }else{
+    document.getElementById('pin-err').style.display='block';
+  }
+}
+
+// ── INÍCIO ─────────────────────────────────────────
+function renderInicio(){
+  const el=document.getElementById('ci');
+  const t=today();
+  const now=new Date();
+  const totalAtl=Object.values(S.atletas).filter(a=>a.ativo!==false).length;
+  const totalTr=Object.values(S.treinadores).filter(a=>a.ativo!==false).length;
+  const upSess=Object.entries(S.sessoes).filter(([,s])=>s.data>=t).sort((a,b)=>a[1].data.localeCompare(b[1].data));
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false);
+  const pagosIds=new Set(Object.values(S.pagamentos).filter(p=>p.mes==mes&&p.ano==ano&&p.pago&&p.tipo==='mensalidade').map(p=>p.atletaId));
+  const pendente=ativos.filter(([id])=>!pagosIds.has(id)).length;
+
+  const upHtml=upSess.length===0
+    ?'<div class="alert al-i">Nenhuma sessão agendada. Aguardando o administrador.</div>'
+    :upSess.slice(0,4).map(([id,s])=>{
+      const d=new Date(s.data+'T12:00:00');
+      const conf=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
+      const lb=locBadge(s.local),ll=locLabel(s.local);
+      return '<div class="sess-card" onclick="goToPresencaSessao(\''+id+'\')"><div style="text-align:center;width:44px;flex-shrink:0"><div class="sess-day">'+d.getDate()+'</div><div class="sess-mon">'+MONS[d.getMonth()]+'</div></div><div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+(s.hora||'Treino')+' — '+DIAS[d.getDay()]+'</div><div style="font-size:.7rem;color:var(--text2);margin-top:2px"><span class="badge '+lb+'">'+ll+'</span>&nbsp;'+conf+' confirmados</div></div><div style="color:var(--text3);font-size:1.2rem">›</div></div>';
+    }).join('');
+
+  el.innerHTML='<div style="padding-top:.5rem" class="fade-up">'
+    +'<div style="margin-bottom:1.25rem">'
+    +'<div style="font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.08em">'+DIAS[now.getDay()]+', '+now.getDate()+' de '+MESES[now.getMonth()+1]+' '+now.getFullYear()+'</div>'
+    +'<div style="font-size:1.5rem;font-weight:800;color:#fff;line-height:1.25;margin-top:.25rem">Bem-vindo à<br><span style="color:var(--gold)">AJF Academia</span> 🥅</div>'
+    +'</div>'
+    +'<div class="stat-grid" style="margin-bottom:1.25rem">'
+    +'<div class="stat-card"><div class="stat-ic">🥅</div><div class="stat-v">'+totalAtl+'</div><div class="stat-l">Goleiros Ativos</div></div>'
+    +'<div class="stat-card"><div class="stat-ic">📅</div><div class="stat-v">'+upSess.length+'</div><div class="stat-l">Próximas Sessões</div></div>'
+    +'<div class="stat-card"><div class="stat-ic">⚠️</div><div class="stat-v" style="color:'+(pendente>0?'var(--danger)':'var(--success)')+'">'+pendente+'</div><div class="stat-l">Pagamentos Pend.</div></div>'
+    +'<div class="stat-card"><div class="stat-ic">👥</div><div class="stat-v">'+totalTr+'</div><div class="stat-l">Treinadores</div></div>'
+    +'</div>'
+    +'<div class="sec-hdr"><span class="sec-t">Acesso Rápido</span></div>'
+    +'<div class="qa-grid">'
+    +'<div class="qa" onclick="goTo(\'presenca\')"><div class="qa-ic">📋</div><div class="qa-lb">Confirmar Presença</div></div>'
+    +'<div class="qa" onclick="goTo(\'avaliacao\')"><div class="qa-ic">⭐</div><div class="qa-lb">Avaliar Goleiro</div></div>'
+    +'<div class="qa" onclick="goTo(\'loja\')"><div class="qa-ic">🛒</div><div class="qa-lb">Loja de Kits</div></div>'
+    +'<div class="qa" onclick="goTo(\'treinadores\')"><div class="qa-ic">👥</div><div class="qa-lb">Treinadores</div></div>'
+    +'</div>'
+    +'<div class="sec-hdr"><span class="sec-t">Próximas Sessões</span><button class="btn btn-sm btn-o" onclick="goTo(\'presenca\')">Ver todas</button></div>'
+    +upHtml
+    +'<div class="div"></div>'
+    +'<div style="text-align:center;padding:.5rem 0">'
+    +'<div style="font-size:.6rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem">LOCAIS DE TREINO</div>'
+    +'<div style="display:flex;gap:.625rem;justify-content:center">'
+    +'<div class="card" style="flex:1;text-align:center;padding:.625rem"><span class="badge bp" style="margin-bottom:.35rem">Penha</span><div style="font-size:.7rem;color:var(--text2)">Seg · Qua · Sex</div></div>'
+    +'<div class="card" style="flex:1;text-align:center;padding:.625rem"><span class="badge bg_" style="margin-bottom:.35rem">Guarulhos</span><div style="font-size:.7rem;color:var(--text2)">Ter · Qui</div></div>'
+    +'</div></div></div>';
+}
+
+function goToPresencaSessao(id){
+  activeSessId=id;
+  goTo('presenca');
+}
+
+// ── PRESENÇA ───────────────────────────────────────
+let presLocal='penha';
+function renderPresenca(){
+  const el=document.getElementById('cp');
+  const t=today();
+  const allSess=Object.entries(S.sessoes).sort((a,b)=>a[1].data.localeCompare(b[1].data));
+  const filtSess=allSess.filter(([,s])=>s.local===presLocal&&s.data>=t);
+  const pastSess=allSess.filter(([,s])=>s.local===presLocal&&s.data<t).reverse().slice(0,3);
+
+  let detailHtml='';
+  if(activeSessId&&S.sessoes[activeSessId]){
+    const s=S.sessoes[activeSessId];
+    const d=new Date(s.data+'T12:00:00');
+    const conf=S.presencas[activeSessId]||{};
+    const confList=Object.entries(conf).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+    const closed=s.data<t;
+    detailHtml='<div class="card" style="margin-bottom:1rem">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">'
+      +'<div><div style="font-size:.625rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.08em">SESSÃO SELECIONADA</div>'
+      +'<div style="font-size:1rem;font-weight:700;color:#fff;margin-top:.1rem">'+(s.hora||'Treino')+' — '+DIAS[d.getDay()]+', '+fmt(s.data)+'</div>'
+      +'<span class="badge '+(s.local==='penha'?'bp':'bg_')+'" style="margin-top:.25rem">'+locLabel(s.local)+'</span></div>'
+      +'<button class="btn btn-sm btn-o" onclick="activeSessId=null;renderPresenca()">✕</button>'
+      +'</div>'
+      +(closed
+        ?'<div class="alert al-w">🔒 Esta sessão já foi realizada. Lista encerrada.</div>'
+        :'<button class="btn btn-g btn-blk" onclick="abrirConfirmarPresenca(\''+activeSessId+'\')">✓ Confirmar Minha Presença</button>'
+      )
+      +(confList.length>0
+        ?'<div style="margin-top:1rem"><div class="sec-t" style="margin-bottom:.5rem">'+confList.length+' Confirmados</div>'
+         +confList.map(([cid,c])=>'<div class="ath-row"><div class="av av-g">'+initials(c.nome)+'</div><div style="flex:1"><div style="font-size:.875rem;color:#fff;font-weight:500">'+c.nome+'</div>'+(c.tel?'<div style="font-size:.7rem;color:var(--text2)">'+c.tel+'</div>':'')+'</div>'+(adminAuth?'<button class="btn btn-sm btn-d" onclick="removerPresenca(\''+activeSessId+'\',\''+cid+'\')">✕</button>':'')+'</div>').join('')
+         +'</div>'
+        :'<div style="font-size:.8rem;color:var(--text3);text-align:center;margin-top:.75rem">Nenhuma confirmação ainda.</div>'
+      )
+      +'</div>';
+  }
+
+  const locBtn=(l,lbl)=>'<button class="btn '+(presLocal===l?'btn-g':'btn-o')+'" onclick="presLocal=\''+l+'\';renderPresenca()">'+lbl+'</button>';
+  const sessCard=([id,s])=>{
+    const d=new Date(s.data+'T12:00:00');
+    const conf=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
+    return '<div class="sess-card '+(activeSessId===id?'card-gold':'')+'" onclick="activeSessId=\''+id+'\';renderPresenca()">'
+      +'<div style="text-align:center;width:44px;flex-shrink:0"><div class="sess-day">'+d.getDate()+'</div><div class="sess-mon">'+MONS[d.getMonth()]+'</div></div>'
+      +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+(s.hora||'Treino')+' — '+DIAS[d.getDay()]+'</div>'
+      +'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+conf+' confirmados</div></div>'
+      +'<div style="color:var(--text3);font-size:1.2rem">›</div></div>';
+  };
+
+  el.innerHTML='<div class="fade-up">'
+    +'<div class="sec-hdr"><span class="sec-t">Listas de Presença</span></div>'
+    +'<div style="display:flex;gap:.5rem;margin-bottom:1rem">'+locBtn('penha','🔵 Penha')+locBtn('guarulhos','🟣 Guarulhos')+'</div>'
+    +detailHtml
+    +(filtSess.length>0?'<div class="sec-hdr"><span class="sec-t">Próximas Sessões</span></div>'+filtSess.map(sessCard).join(''):'')
+    +(pastSess.length>0?'<div class="sec-hdr" style="margin-top:.75rem"><span class="sec-t">Sessões Recentes</span></div>'+pastSess.map(sessCard).join(''):'')
+    +(filtSess.length===0&&pastSess.length===0?'<div class="emp"><div class="emp-ic">📋</div><div class="emp-t">Nenhuma sessão cadastrada</div><div class="emp-s">O administrador irá agendar em breve.</div></div>':'')
+    +'</div>';
+}
+
+function abrirConfirmarPresenca(sessId){
+  activeSessId=sessId;
+  const s=S.sessoes[sessId];
+  if(!s)return;
+  const d=new Date(s.data+'T12:00:00');
+  document.getElementById('ov-presenca-t').textContent='Confirmar Presença — '+locLabel(s.local)+' · '+DIAS[d.getDay()];
+  document.getElementById('pres-nome').value='';
+  document.getElementById('pres-tel').value='';
+  openOv('ov-presenca');
+}
+
+function confirmarPresenca(){
+  const nome=(document.getElementById('pres-nome').value||'').trim();
+  if(!nome){showToast('Digite seu nome.','err');return;}
+  if(!activeSessId){showToast('Sessão não selecionada.','err');return;}
+  const s=S.sessoes[activeSessId];
+  if(s&&s.data<today()){showToast('Esta sessão já aconteceu.','err');return;}
+  const tel=(document.getElementById('pres-tel').value||'').trim();
+  const id=uid();
+  db.ref('ajf/presencas/'+activeSessId+'/'+id).set({nome,tel,ts:Date.now()}).then(()=>{
+    showToast('✓ Presença confirmada!','ok');
+    closeOv('ov-presenca');
+  });
+}
+
+function removerPresenca(sessId,confId){
+  if(!confirm('Remover esta confirmação?'))return;
+  db.ref('ajf/presencas/'+sessId+'/'+confId).remove().then(()=>showToast('Removido.'));
+}
+
+// ── AVALIAÇÃO ──────────────────────────────────────
+let avalSessId=null, avalAtl=null;
+function renderAvaliacao(){
+  const el=document.getElementById('ca');
+  const t=today();
+  const sessoes=Object.entries(S.sessoes).filter(([,s])=>s.data<=t).sort((a,b)=>b[1].data.localeCompare(a[1].data)).slice(0,10);
+
+  let content='<div class="fade-up">'
+    +'<div class="sec-hdr"><span class="sec-t">Avaliação de Goleiros</span></div>';
+
+  if(!avalSessId){
+    content+='<div class="alert al-i" style="margin-bottom:1rem">Selecione uma sessão para avaliar os atletas presentes.</div>'
+    +(sessoes.length===0
+      ?'<div class="emp"><div class="emp-ic">⭐</div><div class="emp-t">Nenhuma sessão disponível</div><div class="emp-s">Sessões aparecerão após a data de realização.</div></div>'
+      :sessoes.map(([id,s])=>{
+        const d=new Date(s.data+'T12:00:00');
+        const conf=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
+        return '<div class="sess-card" onclick="avalSessId=\''+id+'\';avalAtl=null;renderAvaliacao()">'
+          +'<div style="text-align:center;width:44px;flex-shrink:0"><div class="sess-day">'+d.getDate()+'</div><div class="sess-mon">'+MONS[d.getMonth()]+'</div></div>'
+          +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+(s.hora||'Treino')+' — '+DIAS[d.getDay()]+'</div>'
+          +'<div style="font-size:.7rem;color:var(--text2);margin-top:2px"><span class="badge '+(s.local==='penha'?'bp':'bg_')+'">'+locLabel(s.local)+'</span>&nbsp;'+conf+' confirmados</div></div>'
+          +'<div style="color:var(--text3);font-size:1.2rem">›</div></div>';
+      }).join(''));
+  } else {
+    const s=S.sessoes[avalSessId];
+    const d=new Date(s.data+'T12:00:00');
+    const confs=Object.entries(S.presencas[avalSessId]||{});
+    const sessAvals=S.avaliacoes[avalSessId]||{};
+    content+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">'
+      +'<button class="btn btn-sm btn-o" onclick="avalSessId=null;avalAtl=null;renderAvaliacao()">← Voltar</button>'
+      +'<div><div style="font-size:.875rem;font-weight:700;color:#fff">'+(s.hora||'Treino')+' — '+DIAS[d.getDay()]+', '+fmt(s.data)+'</div>'
+      +'<span class="badge '+(s.local==='penha'?'bp':'bg_')+'">'+locLabel(s.local)+'</span></div>'
+      +'</div>'
+      +(confs.length===0
+        ?'<div class="alert al-w">Nenhum atleta confirmou presença nesta sessão. Você ainda pode avaliar digitando o nome.</div>'
+        :'')
+      +'<div class="sec-t" style="margin-bottom:.625rem">Atletas Confirmados</div>'
+      +confs.map(([cid,c])=>{
+        const aval=sessAvals[cid];
+        const nota=aval?calcNota(aval):null;
+        return '<div class="ath-row" style="cursor:pointer" onclick="abrirAvaliacao(\''+avalSessId+'\',\''+cid+'\',\''+c.nome+'\')">'
+          +'<div class="av av-g">'+initials(c.nome)+'</div>'
+          +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+c.nome+'</div>'
+          +(aval?'<div style="font-size:.7rem;color:var(--success)">✓ Avaliado</div>':'<div style="font-size:.7rem;color:var(--text3)">Pendente</div>')
+          +'</div>'
+          +(nota!==null?'<div class="score-cir" style="width:44px;height:44px;font-size:.9rem">'+nota+'</div>':'<div style="color:var(--gold);font-size:1rem">›</div>')
+          +'</div>';
+      }).join('')
+      +'<div class="div"></div>'
+      +'<div class="sec-t" style="margin-bottom:.625rem">Avaliar por nome</div>'
+      +'<div style="display:flex;gap:.5rem">'
+      +'<input class="finp" id="avl-free-nm" type="text" placeholder="Nome do goleiro" style="flex:1">'
+      +'<button class="btn btn-g" onclick="avaliarLivre()">Avaliar</button>'
+      +'</div>';
+
+    // Rankings for this session
+    const rankEntries=Object.entries(sessAvals).map(([cid,av])=>{
+      const nm=S.presencas[avalSessId]?.[cid]?.nome||cid;
+      return {cid,nm,nota:calcNota(av)};
+    }).sort((a,b)=>b.nota-a.nota);
+    if(rankEntries.length>0){
+      content+='<div class="sec-hdr" style="margin-top:1rem"><span class="sec-t">Ranking da Sessão</span></div>'
+        +rankEntries.map((r,i)=>'<div class="rank-row"><div style="width:22px;font-size:.875rem;font-weight:800;color:'+(i===0?'var(--gold)':i===1?'#94a3b8':i===2?'#cd7f32':'var(--text3))')+'">'+(i+1)+'</div><div class="av av-g" style="width:34px;height:34px;font-size:.75rem">'+initials(r.nm)+'</div><div style="flex:1;font-size:.875rem;color:#fff">'+r.nm+'</div><div class="score-cir" style="width:40px;height:40px;font-size:.85rem">'+r.nota+'</div></div>').join('');
+    }
+  }
+  content+='</div>';
+  el.innerHTML=content;
+}
+
+function calcNota(av){
+  const vals=EVAL_CRIT.map(c=>Number(av[c.k]||0)).filter(v=>v>0);
+  if(!vals.length)return 0;
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10);
+}
+
+function avaliarLivre(){
+  const nm=(document.getElementById('avl-free-nm')?.value||'').trim();
+  if(!nm){showToast('Digite o nome.','err');return;}
+  const cid=uid();
+  abrirAvaliacao(avalSessId,cid,nm);
+}
+
+function abrirAvaliacao(sessId,atletaId,nome){
+  const existing=S.avaliacoes[sessId]?.[atletaId]||{};
+  evalSessId=sessId;
+  evalAtletaId=atletaId;
+  evalData={...existing};
+  document.getElementById('ov-eval-t').textContent='Avaliar: '+nome;
+  const nota=calcNota(evalData);
+  let body='<div style="margin-bottom:.875rem"><span class="sec-t">Nota atual: </span><span id="ev-nota-display" style="color:var(--gold);font-weight:800;font-size:1rem">'+nota+'/100</span></div>';
+  EVAL_CRIT.forEach(c=>{
+    const cur=evalData[c.k]||0;
+    body+='<div class="ev-row"><div class="ev-lbl">'+c.l+'</div><div class="ev-btns">';
+    for(let i=1;i<=10;i++){
+      body+='<button class="ev-btn'+(cur===i?' sel':'')+'" id="ev-'+c.k+'-'+i+'" onclick="setEval(\''+c.k+'\','+i+')">'+i+'</button>';
+    }
+    body+='</div><div class="ev-sc" id="ev-sc-'+c.k+'">'+(cur||'—')+'</div></div>';
+  });
+  body+='<div class="fgrp"><label class="flbl">Observações</label><textarea class="finp" id="ev-obs" placeholder="Pontos fortes, melhorias...">'+(existing.obs||'')+'</textarea></div>';
+  body+='<button class="btn btn-g btn-blk" onclick="salvarAvaliacao(\''+nome+'\')">💾 Salvar Avaliação</button>';
+  body+='<button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv(\'ov-eval\')">Cancelar</button>';
+  document.getElementById('ov-eval-body').innerHTML=body;
+  openOv('ov-eval');
+}
+
+function setEval(k,v){
+  evalData[k]=evalData[k]===v?0:v;
+  document.querySelectorAll('[id^="ev-'+k+'-"]').forEach(b=>{
+    const n=parseInt(b.id.split('-').pop());
+    b.classList.toggle('sel',n===evalData[k]);
+  });
+  document.getElementById('ev-sc-'+k).textContent=evalData[k]||'—';
+  const notaEl=document.getElementById('ev-nota-display');
+  if(notaEl)notaEl.textContent=calcNota(evalData)+'/100';
+}
+
+function salvarAvaliacao(nome){
+  if(!evalSessId||!evalAtletaId)return;
+  const obs=(document.getElementById('ev-obs')?.value||'').trim();
+  const payload={...evalData,obs,ts:Date.now(),avaliadorNome:nome};
+  db.ref('ajf/avaliacoes/'+evalSessId+'/'+evalAtletaId).update(payload).then(()=>{
+    showToast('✓ Avaliação salva!','ok');
+    closeOv('ov-eval');
+    renderAvaliacao();
+  });
+}
+
+// ── FINANCEIRO ─────────────────────────────────────
+function renderFinanceiro(){
+  if(!adminAuth){pinTarget='financeiro';openOv('ov-pin');document.getElementById('pin-inp').value='';document.getElementById('pin-err').style.display='none';return;}
+  const el=document.getElementById('cf');
+  const tabHtml='<div class="tabs" style="margin-bottom:1rem">'
+    +'<button class="tab '+(finTab==='mensalidades'?'active':'')+'" onclick="finTab=\'mensalidades\';renderFinanceiro()">💳 Mensalidades</button>'
+    +'<button class="tab '+(finTab==='comprovantes'?'active':'')+'" onclick="finTab=\'comprovantes\';renderFinanceiro()">📄 Comprovantes</button>'
+    +'<button class="tab '+(finTab==='relatorio'?'active':'')+'" onclick="finTab=\'relatorio\';renderFinanceiro()">📊 Relatório</button>'
+    +'</div>';
+  let body='';
+  if(finTab==='mensalidades')body=renderMensalidades();
+  else if(finTab==='comprovantes')body=renderComprovantes();
+  else body=renderRelatorio();
+  el.innerHTML='<div class="fade-up">'+tabHtml+body+'</div>';
+}
+
+function renderMensalidades(){
+  const now=new Date();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  const pagoPorAtl={};
+  Object.entries(S.pagamentos).forEach(([pid,p])=>{
+    if(p.mes==mes&&p.ano==ano&&p.tipo==='mensalidade')pagoPorAtl[p.atletaId]={...p,id:pid};
+  });
+  const pagos=ativos.filter(([id])=>pagoPorAtl[id]?.pago).length;
+  const pct=ativos.length?Math.round(pagos/ativos.length*100):0;
+  let html='<div style="margin-bottom:1rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
+    +'<div><div style="font-size:1rem;font-weight:700;color:#fff">'+MESES[mes]+' '+ano+'</div>'
+    +'<div style="font-size:.7rem;color:var(--text2)">'+pagos+' de '+ativos.length+' pagaram ('+pct+'%)</div></div>'
+    +'<div style="font-size:1.25rem;font-weight:800;color:'+(pct<50?'var(--danger)':pct<80?'var(--warn)':'var(--success)')+'">'+pct+'%</div>'
+    +'</div><div class="prog"><div class="prog-f" style="width:'+pct+'%;background:'+(pct<50?'var(--danger)':pct<80?'var(--warn)':'var(--success)')+'"></div></div>'
+    +'</div>';
+  if(ativos.length===0)return html+'<div class="emp"><div class="emp-ic">👥</div><div class="emp-t">Nenhum atleta cadastrado</div></div>';
+  html+=ativos.map(([id,at])=>{
+    const pg=pagoPorAtl[id];
+    const pago=pg?.pago;
+    return '<div class="fin-row">'
+      +'<div class="av '+(at.local==='penha'?'av-p':'av-gu')+'">'+initials(at.nome)+'</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:.875rem;font-weight:600;color:#fff">'+at.nome+'</div>'
+      +'<div style="display:flex;gap:.3rem;margin-top:2px">'
+      +'<span class="badge '+locBadge(at.local)+'">'+locLabel(at.local)+'</span>'
+      +(pago?'<span class="badge bs">✓ Pago</span>':'<span class="badge bd">Pendente</span>')
+      +'</div>'
+      +(pg?.obs?'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+pg.obs+'</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:.35rem">'
+      +(pg?.comprovante?'<button class="btn btn-sm btn-o" onclick="viewImage(S.pagamentos[\''+pg.id+'\']?.comprovante)">📄</button>':'')
+      +(pago
+        ?'<button class="btn btn-sm btn-d" onclick="desmarcarPago(\''+pg.id+'\')">Desfazer</button>'
+        :'<button class="btn btn-sm btn-s" onclick="abrirPagamento(\''+id+'\',\''+at.nome+'\','+mes+','+ano+')">+ Pago</button>'
+      )
+      +'</div></div>';
+  }).join('');
+  return html;
+}
+
+function renderComprovantes(){
+  const comps=Object.entries(S.pagamentos).filter(([,p])=>p.comprovante).sort((a,b)=>b[1].ts-a[1].ts);
+  if(comps.length===0)return'<div class="emp"><div class="emp-ic">📄</div><div class="emp-t">Nenhum comprovante enviado</div></div>';
+  return'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.625rem">'
+    +comps.map(([pid,p])=>{
+      const at=S.atletas[p.atletaId];
+      return '<div class="card" style="padding:.625rem">'
+        +'<img src="'+p.comprovante+'" class="thumb" onclick="viewImage(\''+p.comprovante+'\')">'
+        +'<div style="font-size:.75rem;font-weight:600;color:#fff;margin-top:.375rem">'+(at?.nome||p.atletaNome||'—')+'</div>'
+        +'<div style="font-size:.65rem;color:var(--text2)">'+MESES[p.mes]+' '+p.ano+'</div>'
+        +(p.valor?'<div style="font-size:.75rem;color:var(--gold);font-weight:700">'+fmtMoney(p.valor)+'</div>':'')
+        +'</div>';
+    }).join('')
+    +'</div>';
+}
+
+function renderRelatorio(){
+  const now=new Date();
+  const mes=now.getMonth()+1,ano=now.getFullYear();
+  let totalMes=0,totalPend=0,totalGeral=0;
+  const ativos=Object.entries(S.atletas).filter(([,a])=>a.ativo!==false);
+  const pagPorAtl={};
+  Object.entries(S.pagamentos).forEach(([,p])=>{
+    if(p.mes==mes&&p.ano==ano&&p.tipo==='mensalidade'){
+      if(p.pago){totalMes+=Number(p.valor||0);pagPorAtl[p.atletaId]=true;}
+    }
+    if(p.pago)totalGeral+=Number(p.valor||0);
+  });
+  totalPend=ativos.filter(([id])=>!pagPorAtl[id]).length*Number(S.config?.mensalidadeValor||150);
+  const penhaAtls=ativos.filter(([,a])=>a.local==='penha').length;
+  const guarAtls=ativos.filter(([,a])=>a.local==='guarulhos').length;
+  return'<div>'
+    +'<div class="card card-gold" style="margin-bottom:.75rem">'
+    +'<div style="font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;font-weight:600">Arrecadado — '+MESES[mes]+' '+ano+'</div>'
+    +'<div style="font-size:2rem;font-weight:800;color:var(--gold);margin-top:.25rem">'+fmtMoney(totalMes)+'</div>'
+    +'</div>'
+    +'<div class="stat-grid" style="margin-bottom:1rem">'
+    +'<div class="stat-card"><div class="stat-ic">⚠️</div><div class="stat-v" style="color:var(--danger)">'+fmtMoney(totalPend)+'</div><div class="stat-l">Pendente</div></div>'
+    +'<div class="stat-card"><div class="stat-ic">💰</div><div class="stat-v" style="font-size:1.2rem">'+fmtMoney(totalGeral)+'</div><div class="stat-l">Total Geral</div></div>'
+    +'</div>'
+    +'<div class="card"><div class="sec-t" style="margin-bottom:.625rem">Por Local</div>'
+    +'<div class="ath-row"><div class="av av-p">P</div><div style="flex:1"><div style="font-size:.875rem;color:#fff">Penha</div><div style="font-size:.7rem;color:var(--text2)">'+penhaAtls+' atletas</div></div></div>'
+    +'<div class="ath-row"><div class="av av-gu">G</div><div style="flex:1"><div style="font-size:.875rem;color:#fff">Guarulhos</div><div style="font-size:.7rem;color:var(--text2)">'+guarAtls+' atletas</div></div></div>'
+    +'</div></div>';
+}
+
+function abrirPagamento(atletaId,nome,mes,ano){
+  activePagAtleta={id:atletaId,nome};activePagMes=mes;activePagAno=ano;
+  document.getElementById('ov-pag-t').textContent='Pagamento — '+nome;
+  document.getElementById('pag-val').value=S.config?.mensalidadeValor||150;
+  document.getElementById('pag-obs').value='';
+  document.getElementById('pag-comp').value='';
+  document.getElementById('pag-comp-prev').style.display='none';
+  openOv('ov-pag');
+}
+
+function salvarPagamento(){
+  if(!activePagAtleta)return;
+  const val=parseFloat(document.getElementById('pag-val').value)||0;
+  const obs=(document.getElementById('pag-obs').value||'').trim();
+  const prev=document.getElementById('pag-comp-prev');
+  const comprovante=prev._b64||null;
+  const payload={atletaId:activePagAtleta.id,atletaNome:activePagAtleta.nome,mes:activePagMes,ano:activePagAno,valor:val,obs,pago:true,pagoEm:Date.now(),ts:Date.now(),tipo:'mensalidade'};
+  if(comprovante)payload.comprovante=comprovante;
+  db.ref('ajf/pagamentos/'+uid()).set(payload).then(()=>{
+    showToast('✓ Pagamento registrado!','ok');
+    closeOv('ov-pag');
+    prev._b64=null;
+  });
+}
+
+function desmarcarPago(pagId){
+  if(!confirm('Desmarcar este pagamento?'))return;
+  db.ref('ajf/pagamentos/'+pagId).remove().then(()=>showToast('Pagamento removido.'));
+}
+
+// ── LOJA ───────────────────────────────────────────
+function renderLoja(){
+  const el=document.getElementById('cl');
+  const prods=Object.entries(S.produtos).filter(([,p])=>p.ativo!==false);
+  let html='<div class="fade-up"><div class="sec-hdr"><span class="sec-t">Loja de Equipamentos</span></div>'
+    +(prods.length===0
+      ?'<div class="emp"><div class="emp-ic">🛒</div><div class="emp-t">Em breve</div><div class="emp-s">Produtos serão adicionados pelo administrador.</div></div>'
+      :'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.625rem">'
+       +prods.map(([id,p])=>{
+         const no=!p.estoque||p.estoque<=0;
+         return '<div class="prod-card">'
+           +'<div style="font-size:2.5rem;text-align:center;padding:.5rem 0">'+(p.emoji||'📦')+'</div>'
+           +'<div style="font-size:.825rem;font-weight:700;color:#fff;text-align:center">'+p.nome+'</div>'
+           +(p.descricao?'<div style="font-size:.68rem;color:var(--text2);text-align:center">'+p.descricao+'</div>':'')
+           +'<div style="font-size:1.1rem;font-weight:800;color:var(--gold);text-align:center">'+fmtMoney(p.preco)+'</div>'
+           +(no?'<div style="font-size:.65rem;color:var(--danger);text-align:center">Esgotado</div>':'<div style="font-size:.65rem;color:var(--text3);text-align:center">Estoque: '+p.estoque+'</div>')
+           +(no?'<button class="btn btn-o btn-sm btn-blk" disabled style="opacity:.4">Indisponível</button>'
+             :'<button class="btn btn-g btn-sm btn-blk" onclick="addCart(\''+id+'\')">+ Adicionar</button>')
+           +'</div>';
+       }).join('')+'</div>'
+    )+'</div>';
+  el.innerHTML=html;
+  updateCartFab();
+}
+
+function addCart(prodId){
+  const p=S.produtos[prodId];
+  if(!p)return;
+  cart[prodId]={nome:p.nome,preco:p.preco,emoji:p.emoji||'📦',qty:(cart[prodId]?.qty||0)+1};
+  updateCartFab();
+  showToast('✓ Adicionado ao carrinho!','ok');
+}
+
+function updateCartFab(){
+  const total=Object.values(cart).reduce((a,i)=>a+i.qty,0);
+  const fab=document.getElementById('cart-fab');
+  document.getElementById('cart-fab-ct').textContent=total;
+  fab.classList.toggle('vis',total>0);
+}
+
+function openCart(){
+  if(!Object.keys(cart).length){showToast('Carrinho vazio.','err');return;}
+  const items=Object.entries(cart);
+  const totalVal=items.reduce((a,[,i])=>a+i.preco*i.qty,0);
+  document.getElementById('cart-items').innerHTML=items.map(([id,i])=>
+    '<div style="display:flex;align-items:center;gap:.625rem;padding:.5rem 0;border-bottom:1px solid var(--border)">'
+    +'<div style="font-size:1.5rem">'+i.emoji+'</div>'
+    +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+i.nome+'</div>'
+    +'<div style="font-size:.75rem;color:var(--gold)">'+fmtMoney(i.preco)+' × '+i.qty+'</div></div>'
+    +'<div style="display:flex;align-items:center;gap:.25rem">'
+    +'<button class="btn btn-sm btn-d" style="width:26px;height:26px;padding:0" onclick="changeQty(\''+id+'\',-1)">−</button>'
+    +'<span style="font-size:.875rem;font-weight:700;color:#fff;min-width:20px;text-align:center">'+i.qty+'</span>'
+    +'<button class="btn btn-sm btn-o" style="width:26px;height:26px;padding:0" onclick="changeQty(\''+id+'\',1)">+</button>'
+    +'</div></div>'
+  ).join('');
+  document.getElementById('cart-total').innerHTML='Total: <span style="color:var(--gold)">'+fmtMoney(totalVal)+'</span>';
+  const pm=document.getElementById('cart-pgto').value;
+  document.getElementById('cart-pix-area').style.display=pm==='pix'?'block':'none';
+  document.getElementById('cart-nome').value='';
+  document.getElementById('cart-comp').value='';
+  document.getElementById('cart-comp-prev').style.display='none';
+  openOv('ov-cart');
+}
+
+document.addEventListener('change',e=>{
+  if(e.target.id==='cart-pgto'){
+    document.getElementById('cart-pix-area').style.display=e.target.value==='pix'?'block':'none';
+  }
+});
+
+function changeQty(prodId,delta){
+  if(!cart[prodId])return;
+  cart[prodId].qty+=delta;
+  if(cart[prodId].qty<=0)delete cart[prodId];
+  updateCartFab();
+  if(!Object.keys(cart).length){closeOv('ov-cart');return;}
+  openCart();
+  closeOv('ov-cart');
+  setTimeout(()=>openCart(),50);
+}
+
+function finalizarPedido(){
+  const nome=(document.getElementById('cart-nome').value||'').trim();
+  if(!nome){showToast('Digite seu nome.','err');return;}
+  const pgto=document.getElementById('cart-pgto').value;
+  const prev=document.getElementById('cart-comp-prev');
+  const comp=prev._b64||null;
+  if(pgto==='pix'&&!comp){showToast('Anexe o comprovante Pix.','err');return;}
+  const itens=Object.entries(cart).map(([pid,i])=>({produtoId:pid,nome:i.nome,qty:i.qty,preco:i.preco}));
+  const total=itens.reduce((a,i)=>a+i.preco*i.qty,0);
+  const payload={atletaNome:nome,itens,total,pagto,status:'pendente',data:today(),ts:Date.now()};
+  if(comp)payload.comprovante=comp;
+  db.ref('ajf/pedidos/'+uid()).set(payload).then(()=>{
+    cart={};
+    updateCartFab();
+    showToast('✓ Pedido realizado! Aguarde confirmação.','ok');
+    closeOv('ov-cart');
+    prev._b64=null;
+  });
+}
+
+// ── TREINADORES ────────────────────────────────────
+let trSel=null;
+function renderTreinadores(){
+  const el=document.getElementById('ct');
+  const t=today();
+  const trs=Object.entries(S.treinadores).filter(([,tr])=>tr.ativo!==false);
+  const upSess=Object.entries(S.sessoes).filter(([,s])=>s.data>=t).sort((a,b)=>a[1].data.localeCompare(b[1].data));
+
+  let html='<div class="fade-up"><div class="sec-hdr"><span class="sec-t">Painel do Treinador</span></div>';
+  if(!trSel){
+    html+='<div class="alert al-i" style="margin-bottom:1rem">Selecione seu nome para ver a lista de confirmados.</div>'
+      +(trs.length===0
+        ?'<div class="emp"><div class="emp-ic">👥</div><div class="emp-t">Nenhum treinador cadastrado</div><div class="emp-s">O administrador pode cadastrar no painel admin.</div></div>'
+        :trs.map(([id,tr])=>'<div class="sess-card" onclick="trSel=\''+id+'\';renderTreinadores()">'
+          +'<div class="av av-g" style="width:44px;height:44px">'+initials(tr.nome)+'</div>'
+          +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+tr.nome+'</div>'
+          +'<div style="font-size:.7rem;color:var(--text2);margin-top:2px">'+tr.especialidade+'&nbsp;·&nbsp;<span class="badge '+locBadge(tr.local)+'">'+locLabel(tr.local)+'</span></div></div>'
+          +'<div style="color:var(--text3);font-size:1.2rem">›</div></div>').join('')
+      );
+  } else {
+    const tr=S.treinadores[trSel];
+    if(!tr){trSel=null;renderTreinadores();return;}
+    const mySess=upSess.filter(([,s])=>s.local===tr.local);
+    html+='<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">'
+      +'<button class="btn btn-sm btn-o" onclick="trSel=null;renderTreinadores()">← Voltar</button>'
+      +'<div><div style="font-size:.875rem;font-weight:700;color:#fff">'+tr.nome+'</div>'
+      +'<span class="badge '+locBadge(tr.local)+'">'+locLabel(tr.local)+'</span></div>'
+      +'</div>';
+    if(mySess.length===0){
+      html+='<div class="alert al-i">Nenhuma sessão agendada para '+locLabel(tr.local)+' no momento.</div>';
+    } else {
+      const [nextId,nextS]=mySess[0];
+      const d=new Date(nextS.data+'T12:00:00');
+      const confs=Object.entries(S.presencas[nextId]||{}).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+      html+='<div class="card card-gold" style="margin-bottom:1rem">'
+        +'<div style="font-size:.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;font-weight:700">PRÓXIMA SESSÃO</div>'
+        +'<div style="font-size:1.1rem;font-weight:800;color:#fff;margin-top:.25rem">'+(nextS.hora||'Treino')+' — '+DIAS[d.getDay()]+', '+fmt(nextS.data)+'</div>'
+        +'<div style="font-size:.875rem;color:var(--gold);font-weight:700;margin-top:.25rem">'+confs.length+' confirmados</div>'
+        +'</div>'
+        +(confs.length===0
+          ?'<div class="alert al-w">Nenhum goleiro confirmou presença ainda.</div>'
+          :'<div class="sec-t" style="margin-bottom:.625rem">Lista de Confirmados</div>'
+           +confs.map(([,c],i)=>'<div class="ath-row">'
+             +'<div style="width:22px;font-size:.875rem;font-weight:700;color:var(--text3)">'+(i+1)+'</div>'
+             +'<div class="av av-g" style="width:36px;height:36px;font-size:.75rem">'+initials(c.nome)+'</div>'
+             +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+c.nome+'</div>'
+             +(c.tel?'<div style="font-size:.7rem;color:var(--text2)">📱 '+c.tel+'</div>':'')
+             +'</div></div>').join('')
+        );
+      if(mySess.length>1){
+        html+='<div class="sec-hdr" style="margin-top:1rem"><span class="sec-t">Próximas Sessões</span></div>'
+          +mySess.slice(1,4).map(([id,s])=>{
+            const dd=new Date(s.data+'T12:00:00');
+            const c2=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
+            return '<div class="sess-card" style="cursor:default">'
+              +'<div style="text-align:center;width:44px;flex-shrink:0"><div class="sess-day">'+dd.getDate()+'</div><div class="sess-mon">'+MONS[dd.getMonth()]+'</div></div>'
+              +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+(s.hora||'Treino')+' — '+DIAS[dd.getDay()]+'</div>'
+              +'<div style="font-size:.7rem;color:var(--text2)">'+c2+' confirmados</div></div></div>';
+          }).join('');
+      }
+    }
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ── ADMIN ──────────────────────────────────────────
+function renderAdmin(){
+  if(!adminAuth)return;
+  const el=document.getElementById('cdm');
+  const tabs=['atletas','sessoes','treinadores','produtos','pedidos','config'];
+  const labels=['👤 Atletas','📅 Sessões','👥 Treinadores','🛒 Produtos','📦 Pedidos','⚙️ Config'];
+  const tabHtml='<div class="adm-tabs">'+tabs.map((t,i)=>'<button class="adm-tab '+(admTab===t?'active':'')+'" onclick="admTab=\''+t+'\';renderAdmin()">'+labels[i]+'</button>').join('')+'</div>';
+  let body='';
+  if(admTab==='atletas')body=adminAtletas();
+  else if(admTab==='sessoes')body=adminSessoes();
+  else if(admTab==='treinadores')body=adminTreinadores();
+  else if(admTab==='produtos')body=adminProdutos();
+  else if(admTab==='pedidos')body=adminPedidos();
+  else body=adminConfig();
+  el.innerHTML='<div class="fade-up">'+tabHtml+body+'</div>';
+}
+
+function adminAtletas(){
+  const atls=Object.entries(S.atletas).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  return'<button class="btn btn-g" style="margin-bottom:1rem;width:100%" onclick="formAtleta()">+ Novo Atleta</button>'
+    +(atls.length===0?'<div class="emp"><div class="emp-ic">👤</div><div class="emp-t">Nenhum atleta cadastrado</div></div>'
+    :atls.map(([id,at])=>'<div class="fin-row">'
+      +'<div class="av '+(at.local==='penha'?'av-p':'av-gu')+'">'+initials(at.nome)+'</div>'
+      +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+at.nome+'</div>'
+      +'<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:2px">'
+      +'<span class="badge '+locBadge(at.local)+'">'+locLabel(at.local)+'</span>'
+      +(at.ativo===false?'<span class="badge bd">Inativo</span>':'<span class="badge bs">Ativo</span>')
+      +'</div>'
+      +(at.telefone?'<div style="font-size:.7rem;color:var(--text2)">📱 '+at.telefone+'</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:.3rem">'
+      +'<button class="btn btn-sm btn-o" onclick="formAtleta(\''+id+'\')">✏️</button>'
+      +'<button class="btn btn-sm btn-d" onclick="toggleAtleta(\''+id+'\','+(!at.ativo||at.ativo===true)+')">'+( at.ativo===false?'▶':'⏸')+'</button>'
+      +'</div></div>').join(''));
+}
+
+function formAtleta(id){
+  const at=id?S.atletas[id]:null;
+  document.getElementById('ov-form-t').textContent=id?'Editar Atleta':'Novo Atleta';
+  document.getElementById('ov-form-body').innerHTML=
+    '<div class="fgrp"><label class="flbl">Nome completo</label><input class="finp" id="f-nome" value="'+(at?.nome||'')+'" placeholder="Nome do goleiro" maxlength="80"></div>'
+    +'<div class="fgrp"><label class="flbl">Telefone</label><input class="finp" id="f-tel" type="tel" value="'+(at?.telefone||'')+'" placeholder="(11) 99999-9999"></div>'
+    +'<div class="fgrp"><label class="flbl">Local</label><select class="finp" id="f-local"><option value="penha" '+(at?.local==='penha'?'selected':'')+'>Penha</option><option value="guarulhos" '+(at?.local==='guarulhos'?'selected':'')+'>Guarulhos</option></select></div>'
+    +'<div class="fgrp"><label class="flbl">Email (opcional)</label><input class="finp" id="f-email" type="email" value="'+(at?.email||'')+'" placeholder="email@exemplo.com"></div>'
+    +'<button class="btn btn-g btn-blk" onclick="salvarAtleta(\''+id+'\')">💾 Salvar</button>'
+    +'<button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv(\'ov-form\')">Cancelar</button>';
+  openOv('ov-form');
+}
+
+function salvarAtleta(id){
+  const nome=(document.getElementById('f-nome').value||'').trim();
+  if(!nome){showToast('Digite o nome.','err');return;}
+  const tel=(document.getElementById('f-tel').value||'').trim();
+  const local=document.getElementById('f-local').value;
+  const email=(document.getElementById('f-email').value||'').trim();
+  const payload={nome,telefone:tel,local,email,ativo:true};
+  const key=id||uid();
+  db.ref('ajf/atletas/'+key).update(payload).then(()=>{
+    showToast('✓ Atleta salvo!','ok');
+    closeOv('ov-form');
+  });
+}
+
+function toggleAtleta(id,novoEstado){
+  db.ref('ajf/atletas/'+id+'/ativo').set(!novoEstado).then(()=>showToast(novoEstado?'Atleta desativado.':'Atleta reativado.'));
+}
+
+function adminSessoes(){
+  const sess=Object.entries(S.sessoes).sort((a,b)=>b[1].data.localeCompare(a[1].data));
+  return'<button class="btn btn-g" style="margin-bottom:1rem;width:100%" onclick="formSessao()">+ Nova Sessão</button>'
+    +(sess.length===0?'<div class="emp"><div class="emp-ic">📅</div><div class="emp-t">Nenhuma sessão</div></div>'
+    :sess.slice(0,20).map(([id,s])=>{
+      const d=new Date(s.data+'T12:00:00');
+      const conf=S.presencas[id]?Object.keys(S.presencas[id]).length:0;
+      const past=s.data<today();
+      return '<div class="fin-row">'
+        +'<div style="text-align:center;width:40px;flex-shrink:0"><div style="font-size:1.25rem;font-weight:800;color:'+(past?'var(--text3)':'#fff')+'">'+d.getDate()+'</div><div style="font-size:.6rem;color:var(--text2);text-transform:uppercase">'+MONS[d.getMonth()]+'</div></div>'
+        +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:'+(past?'var(--text2)':'#fff')+'">'+(s.hora||'Treino')+' — '+DIAS[d.getDay()]+'</div>'
+        +'<div style="display:flex;gap:.3rem;margin-top:2px"><span class="badge '+locBadge(s.local)+'">'+locLabel(s.local)+'</span><span class="badge bn">'+conf+' confirmados</span></div>'
+        +(s.obs?'<div style="font-size:.7rem;color:var(--text2)">'+s.obs+'</div>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:.3rem">'
+        +'<button class="btn btn-sm btn-o" onclick="formSessao(\''+id+'\')">✏️</button>'
+        +'<button class="btn btn-sm btn-d" onclick="deleteSessao(\''+id+'\')">🗑️</button>'
+        +'</div></div>';
+    }).join(''));
+}
+
+function formSessao(id){
+  const s=id?S.sessoes[id]:null;
+  document.getElementById('ov-form-t').textContent=id?'Editar Sessão':'Nova Sessão';
+  document.getElementById('ov-form-body').innerHTML=
+    '<div class="fgrp"><label class="flbl">Data</label><input class="finp" id="f-data" type="date" value="'+(s?.data||today())+'"></div>'
+    +'<div class="fgrp"><label class="flbl">Horário</label><input class="finp" id="f-hora" type="time" value="'+(s?.hora||'08:00')+'"></div>'
+    +'<div class="fgrp"><label class="flbl">Local</label><select class="finp" id="f-local"><option value="penha" '+(s?.local==='penha'?'selected':'')+'>Penha (Seg/Qua/Sex)</option><option value="guarulhos" '+(s?.local==='guarulhos'?'selected':'')+'>Guarulhos (Ter/Qui)</option></select></div>'
+    +'<div class="fgrp"><label class="flbl">Observações</label><input class="finp" id="f-obs" value="'+(s?.obs||'')+'" placeholder="Opcional" maxlength="100"></div>'
+    +'<button class="btn btn-g btn-blk" onclick="salvarSessao(\''+id+'\')">💾 Salvar</button>'
+    +'<button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv(\'ov-form\')">Cancelar</button>';
+  openOv('ov-form');
+}
+
+function salvarSessao(id){
+  const data=document.getElementById('f-data').value;
+  if(!data){showToast('Selecione a data.','err');return;}
+  const hora=document.getElementById('f-hora').value;
+  const local=document.getElementById('f-local').value;
+  const obs=(document.getElementById('f-obs').value||'').trim();
+  const key=id||uid();
+  db.ref('ajf/sessoes/'+key).update({data,hora,local,obs}).then(()=>{
+    showToast('✓ Sessão salva!','ok');
+    closeOv('ov-form');
+  });
+}
+
+function deleteSessao(id){
+  if(!confirm('Apagar esta sessão? As presenças vinculadas serão mantidas.'))return;
+  db.ref('ajf/sessoes/'+id).remove().then(()=>showToast('Sessão apagada.'));
+}
+
+function adminTreinadores(){
+  const trs=Object.entries(S.treinadores).sort((a,b)=>a[1].nome.localeCompare(b[1].nome));
+  return'<button class="btn btn-g" style="margin-bottom:1rem;width:100%" onclick="formTreinador()">+ Novo Treinador</button>'
+    +(trs.length===0?'<div class="emp"><div class="emp-ic">👥</div><div class="emp-t">Nenhum treinador</div></div>'
+    :trs.map(([id,tr])=>'<div class="fin-row">'
+      +'<div class="av av-g">'+initials(tr.nome)+'</div>'
+      +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+tr.nome+'</div>'
+      +'<div style="font-size:.7rem;color:var(--text2)">'+tr.especialidade+'&nbsp;·&nbsp;<span class="badge '+locBadge(tr.local)+'">'+locLabel(tr.local)+'</span></div>'
+      +(tr.telefone?'<div style="font-size:.7rem;color:var(--text2)">📱 '+tr.telefone+'</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:.3rem">'
+      +'<button class="btn btn-sm btn-o" onclick="formTreinador(\''+id+'\')">✏️</button>'
+      +'<button class="btn btn-sm btn-d" onclick="deleteTreinador(\''+id+'\')">🗑️</button>'
+      +'</div></div>').join(''));
+}
+
+function formTreinador(id){
+  const tr=id?S.treinadores[id]:null;
+  document.getElementById('ov-form-t').textContent=id?'Editar Treinador':'Novo Treinador';
+  document.getElementById('ov-form-body').innerHTML=
+    '<div class="fgrp"><label class="flbl">Nome</label><input class="finp" id="f-nome" value="'+(tr?.nome||'')+'" placeholder="Nome do treinador" maxlength="80"></div>'
+    +'<div class="fgrp"><label class="flbl">Especialidade</label><input class="finp" id="f-esp" value="'+(tr?.especialidade||'')+'" placeholder="Ex: Treinador de Goleiros" maxlength="80"></div>'
+    +'<div class="fgrp"><label class="flbl">Local</label><select class="finp" id="f-local"><option value="penha" '+(tr?.local==='penha'?'selected':'')+'>Penha</option><option value="guarulhos" '+(tr?.local==='guarulhos'?'selected':'')+'>Guarulhos</option></select></div>'
+    +'<div class="fgrp"><label class="flbl">Telefone</label><input class="finp" id="f-tel" type="tel" value="'+(tr?.telefone||'')+'" placeholder="(11) 99999-9999"></div>'
+    +'<button class="btn btn-g btn-blk" onclick="salvarTreinador(\''+id+'\')">💾 Salvar</button>'
+    +'<button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv(\'ov-form\')">Cancelar</button>';
+  openOv('ov-form');
+}
+
+function salvarTreinador(id){
+  const nome=(document.getElementById('f-nome').value||'').trim();
+  if(!nome){showToast('Digite o nome.','err');return;}
+  const esp=(document.getElementById('f-esp').value||'').trim()||'Treinador';
+  const local=document.getElementById('f-local').value;
+  const tel=(document.getElementById('f-tel').value||'').trim();
+  const key=id||uid();
+  db.ref('ajf/treinadores/'+key).update({nome,especialidade:esp,local,telefone:tel,ativo:true}).then(()=>{
+    showToast('✓ Treinador salvo!','ok');
+    closeOv('ov-form');
+  });
+}
+
+function deleteTreinador(id){
+  if(!confirm('Remover este treinador?'))return;
+  db.ref('ajf/treinadores/'+id).remove().then(()=>showToast('Removido.'));
+}
+
+function adminProdutos(){
+  const prods=Object.entries(S.produtos);
+  return'<button class="btn btn-g" style="margin-bottom:1rem;width:100%" onclick="formProduto()">+ Novo Produto</button>'
+    +(prods.length===0?'<div class="emp"><div class="emp-ic">🛒</div><div class="emp-t">Nenhum produto</div></div>'
+    :prods.map(([id,p])=>'<div class="fin-row">'
+      +'<div style="font-size:2rem">'+( p.emoji||'📦')+'</div>'
+      +'<div style="flex:1"><div style="font-size:.875rem;font-weight:700;color:#fff">'+p.nome+'</div>'
+      +'<div style="font-size:.7rem;color:var(--gold)">'+fmtMoney(p.preco)+'</div>'
+      +'<div style="font-size:.7rem;color:var(--text2)">Estoque: '+p.estoque+'</div>'
+      +(p.ativo===false?'<span class="badge bd">Inativo</span>':'<span class="badge bs">Ativo</span>')
+      +'</div>'
+      +'<div style="display:flex;gap:.3rem">'
+      +'<button class="btn btn-sm btn-o" onclick="formProduto(\''+id+'\')">✏️</button>'
+      +'<button class="btn btn-sm btn-d" onclick="deleteProduto(\''+id+'\')">🗑️</button>'
+      +'</div></div>').join(''));
+}
+
+function formProduto(id){
+  const p=id?S.produtos[id]:null;
+  document.getElementById('ov-form-t').textContent=id?'Editar Produto':'Novo Produto';
+  document.getElementById('ov-form-body').innerHTML=
+    '<div class="fgrp"><label class="flbl">Nome</label><input class="finp" id="f-nome" value="'+(p?.nome||'')+'" placeholder="Nome do produto" maxlength="80"></div>'
+    +'<div class="fgrp"><label class="flbl">Descrição</label><input class="finp" id="f-desc" value="'+(p?.descricao||'')+'" placeholder="Descrição curta" maxlength="120"></div>'
+    +'<div class="fgrp"><label class="flbl">Preço (R$)</label><input class="finp" id="f-preco" type="number" value="'+(p?.preco||'')+'" placeholder="0.00" min="0" step="0.01"></div>'
+    +'<div class="fgrp"><label class="flbl">Estoque</label><input class="finp" id="f-est" type="number" value="'+(p?.estoque||0)+'" min="0"></div>'
+    +'<div class="fgrp"><label class="flbl">Emoji</label><input class="finp" id="f-emoji" value="'+(p?.emoji||'📦')+'" placeholder="🧤" maxlength="4"></div>'
+    +'<button class="btn btn-g btn-blk" onclick="salvarProduto(\''+id+'\')">💾 Salvar</button>'
+    +'<button class="btn btn-o btn-blk" style="margin-top:.5rem" onclick="closeOv(\'ov-form\')">Cancelar</button>';
+  openOv('ov-form');
+}
+
+function salvarProduto(id){
+  const nome=(document.getElementById('f-nome').value||'').trim();
+  if(!nome){showToast('Digite o nome.','err');return;}
+  const descricao=(document.getElementById('f-desc').value||'').trim();
+  const preco=parseFloat(document.getElementById('f-preco').value)||0;
+  const estoque=parseInt(document.getElementById('f-est').value)||0;
+  const emoji=(document.getElementById('f-emoji').value||'📦').trim();
+  const key=id||uid();
+  db.ref('ajf/produtos/'+key).update({nome,descricao,preco,estoque,emoji,ativo:true}).then(()=>{
+    showToast('✓ Produto salvo!','ok');
+    closeOv('ov-form');
+  });
+}
+
+function deleteProduto(id){
+  if(!confirm('Remover produto?'))return;
+  db.ref('ajf/produtos/'+id).remove().then(()=>showToast('Removido.'));
+}
+
+function adminPedidos(){
+  const peds=Object.entries(S.pedidos).sort((a,b)=>b[1].ts-a[1].ts);
+  const statusColor={'pendente':'bw','pago':'bs','entregue':'bs','cancelado':'bd'};
+  return peds.length===0?'<div class="emp"><div class="emp-ic">📦</div><div class="emp-t">Nenhum pedido</div></div>'
+    :peds.map(([id,p])=>'<div class="fin-row">'
+      +'<div style="font-size:1.5rem">📦</div>'
+      +'<div style="flex:1"><div style="font-size:.875rem;font-weight:600;color:#fff">'+p.atletaNome+'</div>'
+      +'<div style="font-size:.7rem;color:var(--text2)">'+(p.itens||[]).map(i=>i.nome+'×'+i.qty).join(', ')+'</div>'
+      +'<div style="display:flex;gap:.3rem;margin-top:2px"><span class="badge bo">'+fmtMoney(p.total)+'</span><span class="badge '+(statusColor[p.status]||'bn')+'">'+p.status+'</span></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:.3rem;flex-direction:column">'
+      +(p.comprovante?'<button class="btn btn-sm btn-o" onclick="viewImage(S.pedidos[\''+id+'\']?.comprovante)">📄</button>':'')
+      +(p.status==='pendente'?'<button class="btn btn-sm btn-s" onclick="updatePedidoStatus(\''+id+'\',\'pago\')">✓ Pago</button>':'')
+      +(p.status==='pago'?'<button class="btn btn-sm btn-o" onclick="updatePedidoStatus(\''+id+'\',\'entregue\')">Entregue</button>':'')
+      +'</div></div>').join('');
+}
+
+function updatePedidoStatus(id,status){
+  db.ref('ajf/pedidos/'+id+'/status').set(status).then(()=>showToast('Status atualizado.'));
+}
+
+function adminConfig(){
+  const cfg=S.config||{};
+  return'<div class="card" style="margin-bottom:1rem"><div class="sec-t" style="margin-bottom:.875rem">Configurações Gerais</div>'
+    +'<div class="fgrp"><label class="flbl">PIN do Admin (atual: oculto)</label>'
+    +'<input class="finp" id="cfg-pin" type="password" placeholder="Novo PIN" maxlength="20"></div>'
+    +'<div class="fgrp"><label class="flbl">Valor padrão mensalidade (R$)</label>'
+    +'<input class="finp" id="cfg-mens" type="number" value="'+(cfg.mensalidadeValor||150)+'" min="0" step="0.01"></div>'
+    +'<button class="btn btn-g btn-blk" onclick="salvarConfig()">💾 Salvar Configurações</button>'
+    +'</div>'
+    +'<div class="card"><div class="sec-t" style="margin-bottom:.5rem">Informações</div>'
+    +'<div class="ath-row"><div style="flex:1;font-size:.75rem;color:var(--text2)">Atletas cadastrados</div><div style="font-weight:700;color:#fff">'+Object.keys(S.atletas).length+'</div></div>'
+    +'<div class="ath-row"><div style="flex:1;font-size:.75rem;color:var(--text2)">Sessões cadastradas</div><div style="font-weight:700;color:#fff">'+Object.keys(S.sessoes).length+'</div></div>'
+    +'<div class="ath-row"><div style="flex:1;font-size:.75rem;color:var(--text2)">Treinadores</div><div style="font-weight:700;color:#fff">'+Object.keys(S.treinadores).length+'</div></div>'
+    +'<div class="ath-row"><div style="flex:1;font-size:.75rem;color:var(--text2)">Produtos na loja</div><div style="font-weight:700;color:#fff">'+Object.keys(S.produtos).length+'</div></div>'
+    +'<div class="ath-row"><div style="flex:1;font-size:.75rem;color:var(--text2)">Pagamentos registrados</div><div style="font-weight:700;color:#fff">'+Object.keys(S.pagamentos).length+'</div></div>'
+    +'</div>';
+}
+
+function salvarConfig(){
+  const pin=(document.getElementById('cfg-pin')?.value||'').trim();
+  const mens=parseFloat(document.getElementById('cfg-mens')?.value)||150;
+  const update={mensalidadeValor:mens};
+  if(pin)update.adminPin=pin;
+  db.ref('ajf/config').update(update).then(()=>showToast('✓ Configurações salvas!','ok'));
+}
+
+// ── SEED ───────────────────────────────────────────
+async function seedIfEmpty(){
+  const snap=await db.ref('ajf/config').once('value');
+  if(!snap.exists()){
+    await db.ref('ajf/config').set({adminPin:'ajf2024',mensalidadeValor:150});
+  }
+  const prodSnap=await db.ref('ajf/produtos').once('value');
+  if(!prodSnap.exists()){
+    const prods={
+      [uid()]:{nome:'Luva de Goleiro Pro',descricao:'Palma em látex alemão, corte negativo',preco:189.90,estoque:8,ativo:true,emoji:'🧤'},
+      [uid()]:{nome:'Luva Iniciante',descricao:'Ideal para treinos iniciais',preco:89.90,estoque:12,ativo:true,emoji:'🧤'},
+      [uid()]:{nome:'Camiseta Térmica AJF',descricao:'Compressão com proteção UV, logo AJF',preco:94.90,estoque:15,ativo:true,emoji:'👕'},
+      [uid()]:{nome:'Shorts de Treino',descricao:'Com proteção lateral acolchoada',preco:74.90,estoque:10,ativo:true,emoji:'🩳'},
+      [uid()]:{nome:'Kit Goleiro Completo',descricao:'Luva Pro + Camiseta Térmica + Shorts',preco:329.90,estoque:5,ativo:true,emoji:'🎁'},
+      [uid()]:{nome:'Joelheira Proteção',descricao:'Espuma EVA, ideal para treinos de queda',preco:49.90,estoque:20,ativo:true,emoji:'🦵'},
+    };
+    await db.ref('ajf/produtos').set(prods);
+  }
+}
+
+// ── INIT ───────────────────────────────────────────
+(async function init(){
+  await seedIfEmpty();
+  db.ref('ajf').on('value',snap=>{
+    const d=snap.val()||{};
+    S.atletas=d.atletas||{};
+    S.sessoes=d.sessoes||{};
+    S.presencas=d.presencas||{};
+    S.avaliacoes=d.avaliacoes||{};
+    S.pagamentos=d.pagamentos||{};
+    S.pedidos=d.pedidos||{};
+    S.produtos=d.produtos||{};
+    S.treinadores=d.treinadores||{};
+    S.config=d.config||{};
+    render(curPage);
+    if(curPage==='loja')updateCartFab();
+  });
+  goTo('inicio');
+})();
+</script>
+</body>
+</html>
