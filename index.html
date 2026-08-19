@@ -350,6 +350,7 @@ const db=firebase.database();
 let S={atletas:{},sessoes:{},presencas:{},avaliacoes:{},pagamentos:{},pedidos:{},produtos:{},treinadores:{},config:{}};
 let curPage='inicio', adminAuth=false, pinTarget='', finTab='mensalidades', admTab='atletas', pagarAtletaId='';
 let cart={}, activeSessId=null, activePagAtleta=null, activePagMes=null, activePagAno=null;
+let finMes=new Date().getMonth()+1, finAno=new Date().getFullYear();
 let evalSessId=null, evalAtletaId=null, evalData={};
 const EVAL_CRIT=[
   {k:'reflexos',l:'🙌 Reflexos'},
@@ -910,7 +911,7 @@ function _mkTreinoRow([key,e]){
   const avCls=e.local==='penha'?'av-p':e.local==='guarulhos'?'av-gu':'av-g';
   const nomeEsc=e.nome.replace(/'/g,"\\'");
   const safeKey=key.replace(/[^a-zA-Z0-9]/g,'_');
-  const now=new Date();
+  const mes=finMes,ano=finAno;
   const totalSess=Math.round((e.pago+e.pendente)/40)||1;
   const totalVal=e.pago+e.pendente;
   const accentClr=isPago?'#22c55e':hasComp?'#f59e0b':'#ef4444';
@@ -939,8 +940,8 @@ function _mkTreinoRow([key,e]){
   let detailHtml='';
   if(e.fromPresenca){
     // Busca as sessões reais confirmadas para mostrar as datas
-    const mesStr=String(now.getMonth()+1).padStart(2,'0');
-    const anoStr=String(now.getFullYear());
+    const mesStr=String(mes).padStart(2,'0');
+    const anoStr=String(ano);
     const sessConf=Object.entries(S.sessoes).filter(([sid,s])=>{
       if(!s.data||!s.data.startsWith(anoStr+'-'+mesStr))return false;
       return Object.values(S.presencas[sid]||{}).some(c=>{
@@ -980,7 +981,7 @@ function _mkTreinoRow([key,e]){
     +(e.notificado?'<span style="font-size:.68rem;color:#22c55e">📲 '+new Date(e.notificadoEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'</span>':'')
     +'<div style="flex:1"></div>'
     +'<button class="btn btn-sm btn-o" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+(e.tel||'').replace(/\D/g,'')+'\','+(primPend?'\''+primPend.id+'\'':'null')+')">📲 Cobrar</button>'
-    +(e.fromPresenca&&!isPago&&!hasComp?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
+    +(e.fromPresenca&&!isPago&&!hasComp?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+mes+','+ano+')">✓ Pago</button>':'')
     +(!e.fromPresenca&&primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
     +'</div>';
 
@@ -1026,10 +1027,17 @@ function _renderTreinoLista(entradas){
     +grp(outros,'','Sem local definido',pendOutros,penha.length>0||guar.length>0);
 }
 
+function finNavMes(d){
+  finMes+=d;
+  if(finMes>12){finMes=1;finAno++;}
+  if(finMes<1){finMes=12;finAno--;}
+  renderFinanceiro();
+}
+
 function renderMensalidades(q){
   q=(q||document.getElementById('fin-busca')?.value||'').toLowerCase().trim();
-  const now=new Date();
-  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const mes=finMes,ano=finAno;
+  const isHoje=(mes===new Date().getMonth()+1&&ano===new Date().getFullYear());
   const entradas=_buildTreinoPorAtl(mes,ano);
   const totalPend=entradas.reduce((s,[,e])=>s+e.pendente,0);
   const totalPago=entradas.reduce((s,[,e])=>s+e.pago,0);
@@ -1037,12 +1045,17 @@ function renderMensalidades(q){
   const naoNotif=entradas.filter(([,e])=>!e.notificado&&e.pendente>0);
   let html='<div style="margin-bottom:.875rem">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'
-    +'<div><div style="font-size:1rem;font-weight:700;color:#fff">'+MESES[mes]+' '+ano+'</div>'
+    +'<div style="display:flex;align-items:center;gap:.5rem">'
+    +'<button class="btn btn-sm btn-o" style="padding:.25rem .5rem;font-size:.85rem" onclick="finNavMes(-1)">‹</button>'
+    +'<div>'
+    +'<div style="font-size:1rem;font-weight:700;color:#fff">'+MESES[mes]+' '+ano+(isHoje?' <span style="font-size:.65rem;color:var(--gold)">● Atual</span>':'')+'</div>'
     +'<div style="display:flex;gap:.4rem;margin-top:.2rem">'
     +(totalPend>0?'<span class="badge bd">⚠️ '+fmtMoney(totalPend)+' pendente</span>':'')
     +(totalPago>0?'<span class="badge bs">✓ '+fmtMoney(totalPago)+' recebido</span>':'')
-    +(entradas.length===0?'<span class="badge bn">Nenhuma cobrança</span>':'')
+    +(entradas.length===0?'<span class="badge bn">Sem cobranças</span>':'')
     +'</div></div>'
+    +'<button class="btn btn-sm btn-o" style="padding:.25rem .5rem;font-size:.85rem" onclick="finNavMes(1)">›</button>'
+    +'</div>'
     +(naoNotif.length>0?'<button class="btn btn-g btn-sm" onclick="enviarCobrancaTodos()" style="white-space:nowrap;flex-shrink:0">📲 Cobrar todos ('+naoNotif.length+')</button>':'')
     +'</div></div>'
     +'<div style="position:relative;margin-bottom:.875rem">'
@@ -1057,8 +1070,7 @@ function renderMensalidades(q){
 }
 
 function enviarCobrancaTodos(){
-  const now=new Date();
-  const mes=now.getMonth()+1,ano=now.getFullYear();
+  const mes=finMes,ano=finAno;
   const entradas=_buildTreinoPorAtl(mes,ano);
   const pendentes=entradas.filter(([,e])=>!e.notificado&&e.pendente>0);
   if(pendentes.length===0){showToast('Todos já foram notificados!','ok');return;}
@@ -1080,11 +1092,21 @@ function cadastrarDaPresenca(nome){
 
 function criarPagPresenca(atletaId,nome,local,mes,ano){
   if(!confirm('Confirmar pagamento de R$ 40,00 para '+nome+'?'))return;
-  const key=uid();
-  const payload={atletaNome:nome,mes,ano,valor:40,pago:true,pendente:false,tipo:'treino',pagoEm:Date.now(),ts:Date.now()};
-  if(atletaId)payload.atletaId=atletaId;
-  if(local)payload.local=local;
-  db.ref('ajf/pagamentos/'+key).set(payload,err=>err?showToast('Erro!','err'):showToast('✓ Pagamento registrado!','ok'));
+  // Se já existe registro, atualiza em vez de criar novo
+  const existente=Object.entries(S.pagamentos).find(([,p])=>{
+    if(p.tipo!=='treino'||p.mes!=mes||p.ano!=ano)return false;
+    if(atletaId&&p.atletaId===atletaId)return true;
+    return(p.atletaNome||'').toLowerCase().trim()===(nome||'').toLowerCase().trim();
+  });
+  if(existente){
+    db.ref('ajf/pagamentos/'+existente[0]).update({pago:true,pendente:false,pagoEm:Date.now()},err=>err?showToast('Erro!','err'):showToast('✓ Pagamento confirmado!','ok'));
+  } else {
+    const key=uid();
+    const payload={atletaNome:nome,mes,ano,valor:40,pago:true,pendente:false,tipo:'treino',pagoEm:Date.now(),ts:Date.now()};
+    if(atletaId)payload.atletaId=atletaId;
+    if(local)payload.local=local;
+    db.ref('ajf/pagamentos/'+key).set(payload,err=>err?showToast('Erro!','err'):showToast('✓ Pagamento registrado!','ok'));
+  }
 }
 
 function renderMensalidadesFiltro(q){
