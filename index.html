@@ -833,7 +833,7 @@ function _buildTreinoPorAtl(mes,ano){
     const at=p.atletaId?S.atletas[p.atletaId]:null;
     const key=p.atletaId||(p.atletaNome?'n:'+p.atletaNome.toLowerCase():null);
     if(!key)return;
-    if(!porKey[key])porKey[key]={atletaId:p.atletaId||null,nome:p.atletaNome||at?.nome||'—',local:at?.local||'',pags:[],pendente:0,pago:0};
+    if(!porKey[key])porKey[key]={atletaId:p.atletaId||null,nome:p.atletaNome||at?.nome||'—',local:at?.local||'',tel:at?.telefone||'',pags:[],pendente:0,pago:0};
     porKey[key].pags.push({...p,id:pid});
     if(p.pago)porKey[key].pago+=Number(p.valor||0);
     else porKey[key].pendente+=Number(p.valor||0);
@@ -845,16 +845,16 @@ function _buildTreinoPorAtl(mes,ano){
     if(!s.data||!s.data.startsWith(ano+'-'+mesStr))return;
     Object.entries(S.presencas[sessId]||{}).forEach(([,c])=>{
       if(!c.nome)return;
-      // Resolve athlete ID from record or by name match
       let atletaId=c.atletaId||null;
       if(!atletaId){
         const m=Object.entries(S.atletas).find(([,a])=>a.ativo!==false&&(a.nome||'').toLowerCase()===(c.nome||'').toLowerCase());
         if(m)atletaId=m[0];
       }
       const key=atletaId||('n:'+c.nome.toLowerCase());
-      if(porKey[key])return; // already has payment record
       const at=atletaId?S.atletas[atletaId]:null;
-      porKey[key]={atletaId,nome:at?.nome||c.nome,local:at?.local||'',pags:[],pendente:40,pago:0,fromPresenca:true};
+      const tel=at?.telefone||c.tel||'';
+      if(porKey[key]){if(tel&&!porKey[key].tel)porKey[key].tel=tel;return;}
+      porKey[key]={atletaId,nome:at?.nome||c.nome,local:at?.local||'',tel,pags:[],pendente:40,pago:0,fromPresenca:true};
     });
   });
 
@@ -880,7 +880,7 @@ function _mkTreinoRow([key,e]){
     +(!atletaId?'&nbsp;<button class="badge bn" style="cursor:pointer;border:none;text-decoration:underline;text-underline-offset:2px" onclick="cadastrarDaPresenca(\''+nomeEsc+'\')" title="Clique para cadastrar">+ Cadastrar</button>':'')
     +'</div></div>'
     +'<div style="display:flex;gap:.35rem">'
-    +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\')">📲</button>'
+    +'<button class="btn btn-sm btn-o" title="Enviar cobrança via WhatsApp" onclick="abrirWhatsAppPagamento('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+( e.tel||'').replace(/\D/g,'')+'\')">📲</button>'
     +(e.fromPresenca?'<button class="btn btn-sm btn-s" onclick="criarPagPresenca('+(atletaId?'\''+atletaId+'\'':'null')+',\''+nomeEsc+'\',\''+e.local+'\','+(now.getMonth()+1)+','+now.getFullYear()+')">✓ Pago</button>':'')
     +(primPend?'<button class="btn btn-sm btn-s" onclick="confirmarPagamento(\''+primPend.id+'\')">✓ Pago</button>':'')
     +'</div></div>';
@@ -1322,10 +1322,15 @@ function copiarLinkPagamento(atletaId){
   else{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Link copiado!','ok');}
 }
 
-function abrirWhatsAppPagamento(atletaId,nome){
-  const link=atletaId?'https://adeiltongomes.github.io/ajf-goleiros/%23pagar/'+atletaId:null;
-  const msg='Olá '+nome+'! 🥅\n\n*AJF Academia de Goleiros*\n\nSua presença no treino foi confirmada! Realize o pagamento de *R$ 40,00* via Pix:\n\n🔑 Chave Pix: *ajfgoleiros*\n\n'+(link?'📲 Clique no link para enviar o comprovante:\n'+decodeURIComponent(link)+'\n\n':'')+'Após o pagamento'+(link?', envie o comprovante pelo link acima':', envie o comprovante para o administrador')+'.\n\nObrigado! 🙏';
-  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+function abrirWhatsAppPagamento(atletaId,nome,telRaw){
+  const link=atletaId?'https://adeiltongomes.github.io/ajf-goleiros/#pagar/'+atletaId:null;
+  const msg='Olá '+nome+'! 🥅\n\n*AJF Academia de Goleiros*\n\nSua presença no treino foi confirmada! Realize o pagamento de *R$ 40,00* via Pix:\n\n🔑 Chave Pix: *ajfgoleiros*\n\n'+(link?'📲 Clique no link para enviar o comprovante:\n'+link+'\n\n':'')+'Após o pagamento'+(link?', envie o comprovante pelo link acima':', envie o comprovante para o administrador')+'.\n\nObrigado! 🙏';
+  // Build phone: strip non-digits, add Brazil code 55 if missing
+  const digits=(telRaw||'').replace(/\D/g,'');
+  const phone=digits?(digits.startsWith('55')?digits:'55'+digits):'';
+  const url=phone?'https://wa.me/'+phone+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
+  if(!phone)showToast('Telefone não encontrado — WhatsApp aberto sem número.','');
+  window.open(url,'_blank');
 }
 
 // ── TREINADORES ────────────────────────────────────
