@@ -656,6 +656,14 @@ function confirmarPresenca(){
     const match=Object.entries(S.atletas).find(([,a])=>a.ativo!==false&&(a.nome||'').toLowerCase()===nome.toLowerCase());
     if(match)atletaId=match[0];
   }
+  // Prevent duplicate confirmation for the same session
+  const presExist=S.presencas[activeSessId]||{};
+  const jaDuplicado=Object.values(presExist).some(c=>{
+    if(atletaId&&c.atletaId===atletaId)return true;
+    if((c.nome||'').toLowerCase()===nome.toLowerCase())return true;
+    return false;
+  });
+  if(jaDuplicado){showToast('Presença já confirmada para este atleta nesta sessão.','err');return;}
   const presId=uid();
   db.ref('ajf/presencas/'+activeSessId+'/'+presId).set({nome,tel,atletaId:atletaId||null,ts:Date.now()}).then(()=>{
     showToast('✓ Presença confirmada!','ok');
