@@ -850,7 +850,7 @@ function _buildTreinoPorAtl(mes,ano){
     const atletaId=_resolveAtletaId(p.atletaId,p.atletaNome);
     const key=upsert(atletaId,p.atletaNome,'',p.local||'');
     porKey[key].pags.push({...p,id:pid});
-    if(p.pago)porKey[key].pago+=Number(p.valor||0);
+    if(p.pago||p.comprovante)porKey[key].pago+=Number(p.valor||0);
     else porKey[key].pendente+=Number(p.valor||0);
     if(p.notificado&&p.notificadoEm>(porKey[key].notificadoEm||0)){porKey[key].notificado=true;porKey[key].notificadoEm=p.notificadoEm;}
   });
@@ -878,9 +878,9 @@ function _buildTreinoPorAtl(mes,ano){
 
 function _mkTreinoRow([key,e]){
   const atletaId=e.atletaId;
-  const pendSess=e.fromPresenca?1:e.pags.filter(p=>!p.pago).length;
-  const pagoSess=e.fromPresenca?0:e.pags.filter(p=>p.pago).length;
-  const primPend=e.fromPresenca?null:e.pags.find(p=>!p.pago);
+  const pendSess=e.fromPresenca?1:e.pags.filter(p=>!p.pago&&!p.comprovante).length;
+  const pagoSess=e.fromPresenca?0:e.pags.filter(p=>p.pago||p.comprovante).length;
+  const primPend=e.fromPresenca?null:e.pags.find(p=>!p.pago&&!p.comprovante);
   const compPag=e.pags.find(p=>p.comprovante);
   const comp=compPag?compPag.comprovante:null;
   const avCls=e.local==='penha'?'av-p':e.local==='guarulhos'?'av-gu':'av-g';
